@@ -377,3 +377,17 @@ def test_compare_files_command_creates_codex_prompt(tmp_path) -> None:
     assert "| latency_ms | higher_is_worse | 100 | 125 | 25.00% | high |" in prompt
     assert "Regression Triage Guidance" in prompt
     assert "Request path latency or dependency wait time" in prompt
+
+
+def test_init_ci_command_creates_output_file(tmp_path) -> None:
+    output_path = tmp_path / "reports" / "benchmark_guardian_ci.yml"
+
+    result = runner.invoke(app, ["init-ci", "--output", str(output_path)])
+
+    assert result.exit_code == 0
+    assert "CI guardrail workflow written to:" in result.output
+    assert output_path.exists()
+    workflow = output_path.read_text(encoding="utf-8")
+    assert "cbg compare-files" in workflow
+    assert "--fail-on-regression" in workflow
+    assert "--codex-prompt reports/codex_fix_prompt.md" in workflow

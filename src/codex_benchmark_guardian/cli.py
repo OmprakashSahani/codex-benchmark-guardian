@@ -11,6 +11,15 @@ from codex_benchmark_guardian.benchmarks import (
     load_benchmark_file,
     load_directions_config,
 )
+from codex_benchmark_guardian.ci import (
+    DEFAULT_BASELINE_PATH,
+    DEFAULT_CURRENT_PATH,
+    DEFAULT_DIRECTIONS_CONFIG_PATH,
+    DEFAULT_OUTPUT_PATH,
+    DEFAULT_PYTHON_VERSION,
+    DEFAULT_THRESHOLD,
+    write_github_actions_workflow,
+)
 from codex_benchmark_guardian.regression import MetricDirection, detect_regression
 from codex_benchmark_guardian.report import (
     generate_codex_fix_prompt,
@@ -92,6 +101,65 @@ def compare(
         console.print(f"[red]Regression detected[/red] | Severity: {result.severity}")
     else:
         console.print("[green]No regression detected[/green]")
+
+
+@app.command("init-ci")
+def init_ci(
+    baseline_path: Annotated[
+        Path,
+        typer.Option(
+            "--baseline",
+            help="Path to the baseline benchmark JSON file used by the workflow.",
+        ),
+    ] = DEFAULT_BASELINE_PATH,
+    current_path: Annotated[
+        Path,
+        typer.Option(
+            "--current",
+            help="Path to the current benchmark JSON file used by the workflow.",
+        ),
+    ] = DEFAULT_CURRENT_PATH,
+    directions_config_path: Annotated[
+        Path,
+        typer.Option(
+            "--directions-config",
+            help="Path to the per-metric directions JSON file used by the workflow.",
+        ),
+    ] = DEFAULT_DIRECTIONS_CONFIG_PATH,
+    threshold: Annotated[
+        float,
+        typer.Option(
+            "--threshold",
+            "-t",
+            help="Regression threshold percentage used by the workflow.",
+        ),
+    ] = DEFAULT_THRESHOLD,
+    python_version: Annotated[
+        str,
+        typer.Option(
+            "--python-version",
+            help="Python version configured for actions/setup-python.",
+        ),
+    ] = DEFAULT_PYTHON_VERSION,
+    output_path: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Path where the GitHub Actions workflow YAML should be written.",
+        ),
+    ] = DEFAULT_OUTPUT_PATH,
+) -> None:
+    """Generate a GitHub Actions benchmark regression guardrail workflow."""
+    write_github_actions_workflow(
+        output_path=output_path,
+        baseline_path=baseline_path,
+        current_path=current_path,
+        directions_config_path=directions_config_path,
+        threshold=threshold,
+        python_version=python_version,
+    )
+    console.print(f"CI guardrail workflow written to: {output_path}")
 
 
 @app.command("compare-files")

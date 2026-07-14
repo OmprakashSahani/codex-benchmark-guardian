@@ -1,4 +1,4 @@
-.PHONY: install test lint format-check demo demo-ci demo-ci-fail clean-reports
+.PHONY: install test lint format-check demo demo-ci demo-ci-fail demo-init-ci clean-reports
 
 install:
 	pip install -e ".[dev]"
@@ -17,6 +17,9 @@ demo:
 
 demo-ci:
 	cbg compare-files examples/baseline.json examples/current_no_regression.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --html-report reports/report.html --fail-on-regression
+
+demo-init-ci:
+	PYTHONPATH=src python -m codex_benchmark_guardian.cli init-ci --output reports/benchmark_guardian_ci.yml
 
 demo-ci-fail:
 	@output=$$(mktemp); \
@@ -38,4 +41,4 @@ demo-ci-fail:
 	fi
 
 clean-reports:
-	rm -f reports/report.md reports/report.html reports/codex_fix_prompt.md
+	rm -f reports/report.md reports/report.html reports/codex_fix_prompt.md reports/benchmark_guardian_ci.yml
