@@ -14,6 +14,7 @@ The project focuses on:
 - Clear regression thresholds that make performance changes easier to discuss.
 - Markdown reports that fit naturally into GitHub issues, pull requests, and CI summaries.
 - Optional self-contained HTML reports for browser-friendly benchmark reviews.
+- Regression Triage Advisor guidance that explains likely areas, why each regression matters, and what to check next.
 - Simple JSON inputs so teams can integrate existing benchmark output without adopting a large platform.
 
 ## Features
@@ -23,8 +24,8 @@ The project focuses on:
 - JSON benchmark loading from baseline and current result files.
 - Multi-metric benchmark comparison across matching numeric metrics.
 - Regression detection with severity classification for `higher_is_worse` and `lower_is_worse` metrics.
-- Markdown report generation with summary counts and per-metric status.
-- Optional HTML report generation with summary counts and per-metric status tables.
+- Markdown report generation with summary counts, per-metric status, and regression triage guidance.
+- Optional HTML report generation with summary counts, per-metric status tables, and regression triage guidance.
 - CI-friendly failure mode for benchmark regressions with `--fail-on-regression`.
 - Example benchmark files under `examples/`.
 - Pytest and Ruff quality checks wired for developer workflows and CI.
@@ -102,7 +103,7 @@ Supported directions are:
 - `higher_is_worse` — default; current value increases can regress.
 - `lower_is_worse` — current value decreases can regress.
 
-The actual direction used for each metric is shown in CLI output and in Markdown and HTML reports.
+The actual direction used for each metric is shown in CLI output and in Markdown and HTML reports. When regressions are detected, the Regression Triage Advisor adds deterministic developer guidance for common metric patterns such as latency, runtime, memory, throughput, accuracy, recall, precision, and success rate.
 
 Example `examples/directions.json`:
 
@@ -146,7 +147,7 @@ The `compare-files` command writes a Markdown report like this. When `--html-rep
 ```markdown
 # Benchmark Comparison Report
 
-Compared metrics: 3
+Compared metrics: 4
 Regressions detected: 2
 
 | Metric | Direction | Baseline | Current | Change | Threshold | Status | Severity |
@@ -155,6 +156,26 @@ Regressions detected: 2
 | memory_mb | higher_is_worse | 256 | 260 | 1.56% | 10.00% | OK | none |
 | runtime_s | higher_is_worse | 2.5 | 2.7 | 8.00% | 10.00% | OK | none |
 | throughput_rps | lower_is_worse | 1000 | 850 | -15.00% | 10.00% | Regression | medium |
+
+## Regression Triage
+
+### latency_ms
+
+- **Likely area:** Request path latency or dependency wait time
+- **Why it matters:** Higher latency slows developer and user workflows and can hide downstream bottlenecks.
+- **Suggested checks:**
+  - Inspect recent changes on the hot path for added I/O, sleeps, retries, or serialization work.
+  - Compare dependency timing, network calls, database queries, and cache hit rates against the baseline.
+  - Check benchmark host load and input size to rule out environmental noise.
+
+### throughput_rps
+
+- **Likely area:** Capacity, concurrency, or request processing rate
+- **Why it matters:** Lower throughput means the system handles less work with the same resources.
+- **Suggested checks:**
+  - Review concurrency limits, worker counts, queue behavior, and backpressure changes.
+  - Inspect CPU, lock contention, database pool usage, and external service rate limits.
+  - Verify the benchmark duration and request mix match the baseline run.
 ```
 
 ## Built with Codex
@@ -164,6 +185,7 @@ Codex was used to help implement and refine the core developer workflow for this
 - JSON benchmark comparison between baseline and current files.
 - CLI integration for single-metric and file-based comparisons.
 - Regression report generation in Markdown and optional HTML.
+- Regression Triage Advisor notes for developer-facing remediation guidance.
 - Unit and CLI tests for benchmark loading, comparison, and regression detection.
 - Example benchmark inputs and generated report output.
 - GitHub Actions CI configuration for automated quality checks.
@@ -183,7 +205,8 @@ Codex was used to help implement and refine the core developer workflow for this
 │   ├── benchmarks.py
 │   ├── cli.py
 │   ├── regression.py
-│   └── report.py
+│   ├── report.py
+│   └── triage.py
 ├── tests/                        # Pytest suite
 ├── pyproject.toml                # Package metadata and tool configuration
 └── README.md

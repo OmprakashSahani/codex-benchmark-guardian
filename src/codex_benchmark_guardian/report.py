@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from html import escape
 
 from codex_benchmark_guardian.regression import RegressionResult
+from codex_benchmark_guardian.triage import generate_triage_notes
 
 
 def generate_markdown_report(results: Sequence[RegressionResult]) -> str:
@@ -33,6 +34,22 @@ def generate_markdown_report(results: Sequence[RegressionResult]) -> str:
             f"{result.severity} |"
         )
 
+    triage_notes = generate_triage_notes(results)
+    if triage_notes:
+        lines.extend(["", "## Regression Triage", ""])
+        for note in triage_notes:
+            lines.extend(
+                [
+                    f"### {note.metric_name}",
+                    "",
+                    f"- **Likely area:** {note.likely_area}",
+                    f"- **Why it matters:** {note.why_it_matters}",
+                    "- **Suggested checks:**",
+                ]
+            )
+            lines.extend(f"  - {check}" for check in note.suggested_checks)
+            lines.append("")
+
     lines.append("")
     return "\n".join(lines)
 
@@ -59,6 +76,32 @@ def generate_html_report(results: Sequence[RegressionResult]) -> str:
         )
 
     table_rows = "\n".join(rows)
+    triage_notes = generate_triage_notes(results)
+    triage_section = ""
+    if triage_notes:
+        triage_items = []
+        for note in triage_notes:
+            checks = "\n".join(
+                f"          <li>{escape(check)}</li>" for check in note.suggested_checks
+            )
+            triage_items.append(
+                '      <article class="triage-note">\n'
+                f"        <h3>{escape(note.metric_name)}</h3>\n"
+                f"        <p><strong>Likely area:</strong> {escape(note.likely_area)}</p>\n"
+                f"        <p><strong>Why it matters:</strong> {escape(note.why_it_matters)}</p>\n"
+                "        <p><strong>Suggested checks:</strong></p>\n"
+                "        <ul>\n"
+                f"{checks}\n"
+                "        </ul>\n"
+                "      </article>"
+            )
+        triage_section = (
+            '  <section class="triage" aria-labelledby="triage-heading">\n'
+            '    <h2 id="triage-heading">Regression Triage</h2>\n'
+            f"{chr(10).join(triage_items)}\n"
+            "  </section>\n"
+        )
+
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -95,6 +138,14 @@ def generate_html_report(results: Sequence[RegressionResult]) -> str:
     th {{ background: #edf2fb; }}
     .regression {{ color: #b42318; font-weight: bold; }}
     .ok {{ color: #027a48; font-weight: bold; }}
+    .triage {{
+      background: #fff8eb;
+      border: 1px solid #f3d08a;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      padding: 1rem;
+    }}
+    .triage-note {{ margin-top: 1rem; }}
   </style>
 </head>
 <body>
@@ -121,6 +172,6 @@ def generate_html_report(results: Sequence[RegressionResult]) -> str:
 {table_rows}
     </tbody>
   </table>
-</body>
+{triage_section}</body>
 </html>
 """
