@@ -8,7 +8,7 @@ from rich.console import Console
 
 from codex_benchmark_guardian.benchmarks import compare_benchmark_metrics, load_benchmark_file
 from codex_benchmark_guardian.regression import detect_regression
-from codex_benchmark_guardian.report import generate_markdown_report
+from codex_benchmark_guardian.report import generate_html_report, generate_markdown_report
 
 app = typer.Typer(
     name="cbg",
@@ -113,8 +113,15 @@ def compare_files(
             help="Path where the Markdown report should be written.",
         ),
     ] = ...,
+    html_report_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--html-report",
+            help="Optional path where the HTML report should be written.",
+        ),
+    ] = None,
 ) -> None:
-    """Compare benchmark metrics from two JSON files and write a Markdown report."""
+    """Compare benchmark metrics from two JSON files and write reports."""
     baseline_metrics = load_benchmark_file(baseline_path)
     current_metrics = load_benchmark_file(current_path)
     results = compare_benchmark_metrics(
@@ -130,10 +137,17 @@ def compare_files(
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(report, encoding="utf-8")
 
+    if html_report_path is not None:
+        html_report = generate_html_report(results)
+        html_report_path.parent.mkdir(parents=True, exist_ok=True)
+        html_report_path.write_text(html_report, encoding="utf-8")
+
     regression_count = sum(result.is_regression for result in results)
     console.print(f"Compared {len(results)} metrics")
     console.print(f"Regressions detected: {regression_count}")
     console.print(f"Report written to: {report_path}")
+    if html_report_path is not None:
+        console.print(f"HTML report written to: {html_report_path}")
 
 
 if __name__ == "__main__":

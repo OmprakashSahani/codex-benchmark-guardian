@@ -85,3 +85,47 @@ def test_compare_files_command_creates_report(tmp_path) -> None:
     assert "| latency_ms | 100 | 125 | 25.00% | 10.00% | Regression | high |" in report
     assert "| memory_mb | 256 | 260 | 1.56% | 10.00% | OK | none |" in report
     assert "| runtime_s | 2.5 | 2.7 | 8.00% | 10.00% | OK | none |" in report
+
+
+def test_compare_files_command_creates_html_report(tmp_path) -> None:
+    baseline_path = tmp_path / "baseline.json"
+    current_path = tmp_path / "current.json"
+    report_path = tmp_path / "reports" / "report.md"
+    html_report_path = tmp_path / "reports" / "report.html"
+    baseline_path.write_text(
+        json.dumps({"latency_ms": 100.0, "memory_mb": 256.0}),
+        encoding="utf-8",
+    )
+    current_path.write_text(
+        json.dumps({"latency_ms": 125.0, "memory_mb": 260.0}),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "compare-files",
+            str(baseline_path),
+            str(current_path),
+            "--threshold",
+            "10",
+            "--report",
+            str(report_path),
+            "--html-report",
+            str(html_report_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Compared 2 metrics" in result.output
+    assert "Regressions detected: 1" in result.output
+    assert "Report written to:" in result.output
+    assert "HTML report written to:" in result.output
+    assert report_path.exists()
+    assert html_report_path.exists()
+    html_report = html_report_path.read_text(encoding="utf-8")
+    assert "Codex Benchmark Guardian" in html_report
+    assert "Total compared metrics: 2" in html_report
+    assert "Regressions detected: 1" in html_report
+    assert '<td class="regression">Regression</td>' in html_report
+    assert '<td class="ok">OK</td>' in html_report
