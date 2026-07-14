@@ -7,7 +7,7 @@ import typer
 from rich.console import Console
 
 from codex_benchmark_guardian.benchmarks import compare_benchmark_metrics, load_benchmark_file
-from codex_benchmark_guardian.regression import detect_regression
+from codex_benchmark_guardian.regression import MetricDirection, detect_regression
 from codex_benchmark_guardian.report import generate_html_report, generate_markdown_report
 
 app = typer.Typer(
@@ -48,12 +48,21 @@ def compare(
     metric_name: str,
     baseline_value: float,
     current_value: float,
-    threshold: float = typer.Option(
-        10.0,
-        "--threshold",
-        "-t",
-        help="Regression threshold percentage.",
-    ),
+    threshold: Annotated[
+        float,
+        typer.Option(
+            "--threshold",
+            "-t",
+            help="Regression threshold percentage.",
+        ),
+    ] = 10.0,
+    direction: Annotated[
+        MetricDirection,
+        typer.Option(
+            "--direction",
+            help="Metric direction that determines which movement is worse.",
+        ),
+    ] = MetricDirection.HIGHER_IS_WORSE,
 ) -> None:
     """Compare a baseline benchmark value against a current value."""
     result = detect_regression(
@@ -61,6 +70,7 @@ def compare(
         baseline_value=baseline_value,
         current_value=current_value,
         threshold_percent=threshold,
+        direction=direction,
     )
 
     console.print(f"[bold]Metric:[/bold] {result.metric_name}")
@@ -68,6 +78,7 @@ def compare(
     console.print(f"[bold]Current:[/bold] {result.current_value}")
     console.print(f"[bold]Change:[/bold] {result.change_percent:.2f}%")
     console.print(f"[bold]Threshold:[/bold] {result.threshold_percent:.2f}%")
+    console.print(f"[bold]Direction:[/bold] {result.direction.value}")
 
     if result.is_regression:
         console.print(f"[red]Regression detected[/red] | Severity: {result.severity}")
@@ -120,6 +131,13 @@ def compare_files(
             help="Optional path where the HTML report should be written.",
         ),
     ] = None,
+    direction: Annotated[
+        MetricDirection,
+        typer.Option(
+            "--direction",
+            help="Metric direction that determines which movement is worse.",
+        ),
+    ] = MetricDirection.HIGHER_IS_WORSE,
     fail_on_regression: Annotated[
         bool,
         typer.Option(
@@ -135,6 +153,7 @@ def compare_files(
         baseline_metrics=baseline_metrics,
         current_metrics=current_metrics,
         threshold_percent=threshold,
+        direction=direction,
     )
 
     if not results:

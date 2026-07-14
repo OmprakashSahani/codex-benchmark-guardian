@@ -15,8 +15,8 @@ def generate_markdown_report(results: Sequence[RegressionResult]) -> str:
         f"Compared metrics: {len(results)}",
         f"Regressions detected: {regression_count}",
         "",
-        "| Metric | Baseline | Current | Change | Threshold | Status | Severity |",
-        "| --- | ---: | ---: | ---: | ---: | --- | --- |",
+        "| Metric | Direction | Baseline | Current | Change | Threshold | Status | Severity |",
+        "| --- | --- | ---: | ---: | ---: | ---: | --- | --- |",
     ]
 
     for result in results:
@@ -24,6 +24,7 @@ def generate_markdown_report(results: Sequence[RegressionResult]) -> str:
         lines.append(
             "| "
             f"{result.metric_name} | "
+            f"{result.direction.value} | "
             f"{result.baseline_value:g} | "
             f"{result.current_value:g} | "
             f"{result.change_percent:.2f}% | "
@@ -47,6 +48,7 @@ def generate_html_report(results: Sequence[RegressionResult]) -> str:
         rows.append(
             "        <tr>\n"
             f"          <td>{escape(result.metric_name)}</td>\n"
+            f"          <td>{escape(result.direction.value)}</td>\n"
             f"          <td>{result.baseline_value:g}</td>\n"
             f"          <td>{result.current_value:g}</td>\n"
             f"          <td>{result.change_percent:.2f}%</td>\n"
@@ -106,6 +108,7 @@ def generate_html_report(results: Sequence[RegressionResult]) -> str:
     <thead>
       <tr>
         <th>Metric</th>
+        <th>Direction</th>
         <th>Baseline</th>
         <th>Current</th>
         <th>Change Percent</th>

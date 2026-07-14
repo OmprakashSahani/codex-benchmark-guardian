@@ -4,7 +4,11 @@ import json
 from pathlib import Path
 from typing import Any
 
-from codex_benchmark_guardian.regression import RegressionResult, detect_regression
+from codex_benchmark_guardian.regression import (
+    MetricDirection,
+    RegressionResult,
+    detect_regression,
+)
 
 BenchmarkMetrics = dict[str, float]
 
@@ -32,6 +36,7 @@ def compare_benchmark_metrics(
     baseline_metrics: BenchmarkMetrics,
     current_metrics: BenchmarkMetrics,
     threshold_percent: float,
+    direction: MetricDirection = MetricDirection.HIGHER_IS_WORSE,
 ) -> list[RegressionResult]:
     """Compare matching numeric metrics from two benchmark mappings."""
     metric_names = sorted(baseline_metrics.keys() & current_metrics.keys())
@@ -43,6 +48,7 @@ def compare_benchmark_metrics(
                 baseline_value=baseline_metrics[metric_name],
                 current_value=current_metrics[metric_name],
                 threshold_percent=threshold_percent,
+                direction=direction,
             )
         )
 

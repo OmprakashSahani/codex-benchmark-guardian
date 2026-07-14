@@ -40,13 +40,14 @@
   <h1>Codex Benchmark Guardian</h1>
   <section class="summary" aria-labelledby="summary-heading">
     <h2 id="summary-heading">Summary</h2>
-    <p>Total compared metrics: 3</p>
+    <p>Total compared metrics: 4</p>
     <p>Regressions detected: 1</p>
   </section>
   <table>
     <thead>
       <tr>
         <th>Metric</th>
+        <th>Direction</th>
         <th>Baseline</th>
         <th>Current</th>
         <th>Change Percent</th>
@@ -58,6 +59,7 @@
     <tbody>
         <tr>
           <td>latency_ms</td>
+          <td>higher_is_worse</td>
           <td>100</td>
           <td>125</td>
           <td>25.00%</td>
@@ -67,6 +69,7 @@
         </tr>
         <tr>
           <td>memory_mb</td>
+          <td>higher_is_worse</td>
           <td>256</td>
           <td>260</td>
           <td>1.56%</td>
@@ -76,9 +79,20 @@
         </tr>
         <tr>
           <td>runtime_s</td>
+          <td>higher_is_worse</td>
           <td>2.5</td>
           <td>2.7</td>
           <td>8.00%</td>
+          <td>10.00%</td>
+          <td class="ok">OK</td>
+          <td>none</td>
+        </tr>
+        <tr>
+          <td>throughput_rps</td>
+          <td>higher_is_worse</td>
+          <td>1000</td>
+          <td>850</td>
+          <td>-15.00%</td>
           <td>10.00%</td>
           <td class="ok">OK</td>
           <td>none</td>

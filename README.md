@@ -19,10 +19,10 @@ The project focuses on:
 ## Features
 
 - `cbg about` and `cbg version` commands for project metadata.
-- Single-metric comparison with configurable regression thresholds.
+- Single-metric comparison with configurable regression thresholds and metric direction support.
 - JSON benchmark loading from baseline and current result files.
 - Multi-metric benchmark comparison across matching numeric metrics.
-- Regression detection with severity classification.
+- Regression detection with severity classification for `higher_is_worse` and `lower_is_worse` metrics.
 - Markdown report generation with summary counts and per-metric status.
 - Optional HTML report generation with summary counts and per-metric status tables.
 - CI-friendly failure mode for benchmark regressions with `--fail-on-regression`.
@@ -47,16 +47,28 @@ Run the project information command:
 cbg about
 ```
 
-Compare a single benchmark metric:
+Compare a single benchmark metric where higher values are worse, which is the default behavior:
 
 ```bash
 cbg compare latency_ms 100 125 --threshold 10
+```
+
+Compare a metric where lower values are worse, such as throughput:
+
+```bash
+cbg compare throughput_rps 1000 850 --threshold 10 --direction lower_is_worse
 ```
 
 Compare benchmark JSON files and generate a Markdown report:
 
 ```bash
 cbg compare-files examples/baseline.json examples/current.json --threshold 10 --report reports/report.md
+```
+
+Use `--direction lower_is_worse` for a file comparison when decreasing metric values represent regressions:
+
+```bash
+cbg compare-files examples/baseline.json examples/current.json --threshold 10 --direction lower_is_worse --report reports/report.md
 ```
 
 Generate Markdown and HTML reports from the same comparison:
@@ -73,6 +85,19 @@ cbg compare-files examples/baseline.json examples/current.json --threshold 10 --
 
 The `--fail-on-regression` flag preserves normal report generation, then exits with a non-zero status code if regressions were found. This is useful in CI workflows where benchmark regressions should block a pull request or deployment. Without the flag, `compare-files` keeps the existing behavior and exits successfully even when regressions are reported.
 
+## Metric direction
+
+By default, Codex Benchmark Guardian treats higher current values as worse. This matches latency, runtime, and memory metrics: a regression is detected when the current value increases by at least the configured threshold percentage.
+
+Some metrics are better when they are higher, such as throughput or requests per second. For those, pass `--direction lower_is_worse`; a regression is detected when the current value decreases by at least the threshold percentage.
+
+Supported directions are:
+
+- `higher_is_worse` — default; current value increases can regress.
+- `lower_is_worse` — current value decreases can regress.
+
+The selected direction is shown in CLI output and in Markdown and HTML reports.
+
 ## Example output
 
 Single-metric comparison output:
@@ -83,13 +108,14 @@ Baseline: 100.0
 Current: 125.0
 Change: 25.00%
 Threshold: 10.00%
+Direction: higher_is_worse
 Regression detected | Severity: high
 ```
 
 File comparison output:
 
 ```text
-Compared 3 metrics
+Compared 4 metrics
 Regressions detected: 1
 Report written to: reports/report.md
 ```
@@ -106,11 +132,12 @@ The `compare-files` command writes a Markdown report like this. When `--html-rep
 Compared metrics: 3
 Regressions detected: 1
 
-| Metric | Baseline | Current | Change | Threshold | Status | Severity |
-| --- | ---: | ---: | ---: | ---: | --- | --- |
-| latency_ms | 100 | 125 | 25.00% | 10.00% | Regression | high |
-| memory_mb | 256 | 260 | 1.56% | 10.00% | OK | none |
-| runtime_s | 2.5 | 2.7 | 8.00% | 10.00% | OK | none |
+| Metric | Direction | Baseline | Current | Change | Threshold | Status | Severity |
+| --- | --- | ---: | ---: | ---: | ---: | --- | --- |
+| latency_ms | higher_is_worse | 100 | 125 | 25.00% | 10.00% | Regression | high |
+| memory_mb | higher_is_worse | 256 | 260 | 1.56% | 10.00% | OK | none |
+| runtime_s | higher_is_worse | 2.5 | 2.7 | 8.00% | 10.00% | OK | none |
+| throughput_rps | higher_is_worse | 1000 | 850 | -15.00% | 10.00% | OK | none |
 ```
 
 ## Built with Codex
