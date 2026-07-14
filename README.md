@@ -188,6 +188,23 @@ Codex was used to help implement and refine the core developer workflow for this
 └── README.md
 ```
 
+
+## Makefile commands
+
+For a shorter local workflow, the repository includes a simple `Makefile` with common development and demo commands:
+
+```bash
+make install        # Install the project with development dependencies
+make lint           # Run Ruff lint checks
+make format-check   # Verify Ruff formatting
+make test           # Run the pytest suite
+make demo           # Generate Markdown and HTML reports from the example benchmarks
+make demo-ci        # Run the example comparison with CI regression failure enabled
+make clean-reports  # Remove generated report files
+```
+
+The demo targets compare `examples/baseline.json` and `examples/current.json`, apply per-metric directions from `examples/directions.json`, and write `reports/report.md` plus `reports/report.html`.
+
 ## Quality checks
 
 Run the same checks used for local development and CI:
