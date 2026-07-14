@@ -120,6 +120,13 @@ def compare_files(
             help="Optional path where the HTML report should be written.",
         ),
     ] = None,
+    fail_on_regression: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-regression",
+            help="Exit with a non-zero status code when regressions are detected.",
+        ),
+    ] = False,
 ) -> None:
     """Compare benchmark metrics from two JSON files and write reports."""
     baseline_metrics = load_benchmark_file(baseline_path)
@@ -148,6 +155,12 @@ def compare_files(
     console.print(f"Report written to: {report_path}")
     if html_report_path is not None:
         console.print(f"HTML report written to: {html_report_path}")
+
+    if fail_on_regression and regression_count > 0:
+        console.print(
+            f"[red]Failing because {regression_count} benchmark regression(s) were detected.[/red]"
+        )
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

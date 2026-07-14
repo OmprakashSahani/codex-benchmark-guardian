@@ -129,3 +129,88 @@ def test_compare_files_command_creates_html_report(tmp_path) -> None:
     assert "Regressions detected: 1" in html_report
     assert '<td class="regression">Regression</td>' in html_report
     assert '<td class="ok">OK</td>' in html_report
+
+
+def test_compare_files_without_fail_on_regression_exits_zero_for_regressions(
+    tmp_path,
+) -> None:
+    baseline_path = tmp_path / "baseline.json"
+    current_path = tmp_path / "current.json"
+    report_path = tmp_path / "reports" / "report.md"
+    baseline_path.write_text(json.dumps({"latency_ms": 100.0}), encoding="utf-8")
+    current_path.write_text(json.dumps({"latency_ms": 125.0}), encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "compare-files",
+            str(baseline_path),
+            str(current_path),
+            "--threshold",
+            "10",
+            "--report",
+            str(report_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Regressions detected: 1" in result.output
+    assert report_path.exists()
+
+
+def test_compare_files_with_fail_on_regression_exits_non_zero_for_regressions(
+    tmp_path,
+) -> None:
+    baseline_path = tmp_path / "baseline.json"
+    current_path = tmp_path / "current.json"
+    report_path = tmp_path / "reports" / "report.md"
+    baseline_path.write_text(json.dumps({"latency_ms": 100.0}), encoding="utf-8")
+    current_path.write_text(json.dumps({"latency_ms": 125.0}), encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "compare-files",
+            str(baseline_path),
+            str(current_path),
+            "--threshold",
+            "10",
+            "--report",
+            str(report_path),
+            "--fail-on-regression",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Regressions detected: 1" in result.output
+    assert "Failing because 1 benchmark regression(s) were detected." in result.output
+    assert report_path.exists()
+
+
+def test_compare_files_with_fail_on_regression_exits_zero_without_regressions(
+    tmp_path,
+) -> None:
+    baseline_path = tmp_path / "baseline.json"
+    current_path = tmp_path / "current.json"
+    report_path = tmp_path / "reports" / "report.md"
+    baseline_path.write_text(json.dumps({"latency_ms": 100.0}), encoding="utf-8")
+    current_path.write_text(json.dumps({"latency_ms": 105.0}), encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "compare-files",
+            str(baseline_path),
+            str(current_path),
+            "--threshold",
+            "10",
+            "--report",
+            str(report_path),
+            "--fail-on-regression",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Regressions detected: 0" in result.output
+    assert "Failing because" not in result.output
+    assert report_path.exists()

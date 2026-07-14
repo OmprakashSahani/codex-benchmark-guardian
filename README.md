@@ -25,6 +25,7 @@ The project focuses on:
 - Regression detection with severity classification.
 - Markdown report generation with summary counts and per-metric status.
 - Optional HTML report generation with summary counts and per-metric status tables.
+- CI-friendly failure mode for benchmark regressions with `--fail-on-regression`.
 - Example benchmark files under `examples/`.
 - Pytest and Ruff quality checks wired for developer workflows and CI.
 
@@ -64,6 +65,14 @@ Generate Markdown and HTML reports from the same comparison:
 cbg compare-files examples/baseline.json examples/current.json --threshold 10 --report reports/report.md --html-report reports/report.html
 ```
 
+Fail CI when one or more benchmark regressions are detected:
+
+```bash
+cbg compare-files examples/baseline.json examples/current.json --threshold 10 --report reports/report.md --fail-on-regression
+```
+
+The `--fail-on-regression` flag preserves normal report generation, then exits with a non-zero status code if regressions were found. This is useful in CI workflows where benchmark regressions should block a pull request or deployment. Without the flag, `compare-files` keeps the existing behavior and exits successfully even when regressions are reported.
+
 ## Example output
 
 Single-metric comparison output:
@@ -85,7 +94,7 @@ Regressions detected: 1
 Report written to: reports/report.md
 ```
 
-When `--html-report reports/report.html` is provided, the command also writes a self-contained HTML report and prints its path.
+When `--html-report reports/report.html` is provided, the command also writes a self-contained HTML report and prints its path. When `--fail-on-regression` is provided and regressions are detected, the command prints a failure message after writing reports and exits non-zero.
 
 ## Report example
 
@@ -144,3 +153,5 @@ ruff check .
 ruff format --check .
 pytest
 ```
+
+For CI enforcement, add `--fail-on-regression` to `cbg compare-files` so the job fails when the comparison finds regressions.
