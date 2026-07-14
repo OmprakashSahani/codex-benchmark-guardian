@@ -271,3 +271,77 @@ def test_compare_files_command_with_lower_is_worse_direction(tmp_path) -> None:
     html_report = html_report_path.read_text(encoding="utf-8")
     assert "<th>Direction</th>" in html_report
     assert "<td>lower_is_worse</td>" in html_report
+
+
+def test_compare_files_command_with_directions_config(tmp_path) -> None:
+    baseline_path = tmp_path / "baseline.json"
+    current_path = tmp_path / "current.json"
+    directions_path = tmp_path / "directions.json"
+    report_path = tmp_path / "reports" / "report.md"
+    baseline_path.write_text(
+        json.dumps({"latency_ms": 100.0, "throughput_rps": 1000.0}),
+        encoding="utf-8",
+    )
+    current_path.write_text(
+        json.dumps({"latency_ms": 125.0, "throughput_rps": 850.0}),
+        encoding="utf-8",
+    )
+    directions_path.write_text(
+        json.dumps({"throughput_rps": "lower_is_worse"}),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "compare-files",
+            str(baseline_path),
+            str(current_path),
+            "--threshold",
+            "10",
+            "--directions-config",
+            str(directions_path),
+            "--report",
+            str(report_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Regressions detected: 2" in result.output
+    report = report_path.read_text(encoding="utf-8")
+    assert (
+        "| latency_ms | higher_is_worse | 100 | 125 | 25.00% | 10.00% | Regression | high |"
+    ) in report
+    assert (
+        "| throughput_rps | lower_is_worse | 1000 | 850 | -15.00% | 10.00% | Regression | medium |"
+    ) in report
+
+
+def test_compare_files_command_rejects_invalid_directions_config(tmp_path) -> None:
+    baseline_path = tmp_path / "baseline.json"
+    current_path = tmp_path / "current.json"
+    directions_path = tmp_path / "directions.json"
+    report_path = tmp_path / "reports" / "report.md"
+    baseline_path.write_text(json.dumps({"latency_ms": 100.0}), encoding="utf-8")
+    current_path.write_text(json.dumps({"latency_ms": 125.0}), encoding="utf-8")
+    directions_path.write_text(
+        json.dumps({"latency_ms": "sideways_is_worse"}),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "compare-files",
+            str(baseline_path),
+            str(current_path),
+            "--directions-config",
+            str(directions_path),
+            "--report",
+            str(report_path),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "invalid direction for latency_ms" in result.output
+    assert not report_path.exists()

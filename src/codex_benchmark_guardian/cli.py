@@ -6,7 +6,11 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
-from codex_benchmark_guardian.benchmarks import compare_benchmark_metrics, load_benchmark_file
+from codex_benchmark_guardian.benchmarks import (
+    compare_benchmark_metrics,
+    load_benchmark_file,
+    load_directions_config,
+)
 from codex_benchmark_guardian.regression import MetricDirection, detect_regression
 from codex_benchmark_guardian.report import generate_html_report, generate_markdown_report
 
@@ -135,9 +139,20 @@ def compare_files(
         MetricDirection,
         typer.Option(
             "--direction",
-            help="Metric direction that determines which movement is worse.",
+            help="Fallback metric direction for metrics not in --directions-config.",
         ),
     ] = MetricDirection.HIGHER_IS_WORSE,
+    directions_config_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--directions-config",
+            help="Optional JSON file mapping metric names to directions.",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+        ),
+    ] = None,
     fail_on_regression: Annotated[
         bool,
         typer.Option(
@@ -149,11 +164,20 @@ def compare_files(
     """Compare benchmark metrics from two JSON files and write reports."""
     baseline_metrics = load_benchmark_file(baseline_path)
     current_metrics = load_benchmark_file(current_path)
+    try:
+        directions = (
+            load_directions_config(directions_config_path)
+            if directions_config_path is not None
+            else None
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--directions-config") from exc
     results = compare_benchmark_metrics(
         baseline_metrics=baseline_metrics,
         current_metrics=current_metrics,
         threshold_percent=threshold,
         direction=direction,
+        directions=directions,
     )
 
     if not results:

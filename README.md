@@ -65,10 +65,16 @@ Compare benchmark JSON files and generate a Markdown report:
 cbg compare-files examples/baseline.json examples/current.json --threshold 10 --report reports/report.md
 ```
 
-Use `--direction lower_is_worse` for a file comparison when decreasing metric values represent regressions:
+Use `--direction lower_is_worse` as a global fallback for a file comparison when decreasing metric values represent regressions:
 
 ```bash
 cbg compare-files examples/baseline.json examples/current.json --threshold 10 --direction lower_is_worse --report reports/report.md
+```
+
+For mixed benchmark files, pass a directions config that maps each metric to its direction:
+
+```bash
+cbg compare-files examples/baseline.json examples/current.json --threshold 10 --directions-config examples/directions.json --report reports/report.md
 ```
 
 Generate Markdown and HTML reports from the same comparison:
@@ -89,14 +95,25 @@ The `--fail-on-regression` flag preserves normal report generation, then exits w
 
 By default, Codex Benchmark Guardian treats higher current values as worse. This matches latency, runtime, and memory metrics: a regression is detected when the current value increases by at least the configured threshold percentage.
 
-Some metrics are better when they are higher, such as throughput or requests per second. For those, pass `--direction lower_is_worse`; a regression is detected when the current value decreases by at least the threshold percentage.
+Some metrics are better when they are higher, such as throughput or requests per second. For those, pass `--direction lower_is_worse`; a regression is detected when the current value decreases by at least the threshold percentage. For `compare-files`, you can also pass `--directions-config` to configure direction per metric while keeping `--direction` as the fallback for metrics missing from the config.
 
 Supported directions are:
 
 - `higher_is_worse` — default; current value increases can regress.
 - `lower_is_worse` — current value decreases can regress.
 
-The selected direction is shown in CLI output and in Markdown and HTML reports.
+The actual direction used for each metric is shown in CLI output and in Markdown and HTML reports.
+
+Example `examples/directions.json`:
+
+```json
+{
+  "latency_ms": "higher_is_worse",
+  "memory_mb": "higher_is_worse",
+  "runtime_s": "higher_is_worse",
+  "throughput_rps": "lower_is_worse"
+}
+```
 
 ## Example output
 
@@ -116,7 +133,7 @@ File comparison output:
 
 ```text
 Compared 4 metrics
-Regressions detected: 1
+Regressions detected: 2
 Report written to: reports/report.md
 ```
 
@@ -130,14 +147,14 @@ The `compare-files` command writes a Markdown report like this. When `--html-rep
 # Benchmark Comparison Report
 
 Compared metrics: 3
-Regressions detected: 1
+Regressions detected: 2
 
 | Metric | Direction | Baseline | Current | Change | Threshold | Status | Severity |
 | --- | --- | ---: | ---: | ---: | ---: | --- | --- |
 | latency_ms | higher_is_worse | 100 | 125 | 25.00% | 10.00% | Regression | high |
 | memory_mb | higher_is_worse | 256 | 260 | 1.56% | 10.00% | OK | none |
 | runtime_s | higher_is_worse | 2.5 | 2.7 | 8.00% | 10.00% | OK | none |
-| throughput_rps | higher_is_worse | 1000 | 850 | -15.00% | 10.00% | OK | none |
+| throughput_rps | lower_is_worse | 1000 | 850 | -15.00% | 10.00% | Regression | medium |
 ```
 
 ## Built with Codex
