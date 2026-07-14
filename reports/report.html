@@ -34,6 +34,14 @@
     th { background: #edf2fb; }
     .regression { color: #b42318; font-weight: bold; }
     .ok { color: #027a48; font-weight: bold; }
+    .triage {
+      background: #fff8eb;
+      border: 1px solid #f3d08a;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      padding: 1rem;
+    }
+    .triage-note { margin-top: 1rem; }
   </style>
 </head>
 <body>
@@ -99,5 +107,30 @@
         </tr>
     </tbody>
   </table>
+  <section class="triage" aria-labelledby="triage-heading">
+    <h2 id="triage-heading">Regression Triage</h2>
+      <article class="triage-note">
+        <h3>latency_ms</h3>
+        <p><strong>Likely area:</strong> Request path latency or dependency wait time</p>
+        <p><strong>Why it matters:</strong> Higher latency slows developer and user workflows and can hide downstream bottlenecks.</p>
+        <p><strong>Suggested checks:</strong></p>
+        <ul>
+          <li>Inspect recent changes on the hot path for added I/O, sleeps, retries, or serialization work.</li>
+          <li>Compare dependency timing, network calls, database queries, and cache hit rates against the baseline.</li>
+          <li>Check benchmark host load and input size to rule out environmental noise.</li>
+        </ul>
+      </article>
+      <article class="triage-note">
+        <h3>throughput_rps</h3>
+        <p><strong>Likely area:</strong> Capacity, concurrency, or request processing rate</p>
+        <p><strong>Why it matters:</strong> Lower throughput means the system handles less work with the same resources.</p>
+        <p><strong>Suggested checks:</strong></p>
+        <ul>
+          <li>Review concurrency limits, worker counts, queue behavior, and backpressure changes.</li>
+          <li>Inspect CPU, lock contention, database pool usage, and external service rate limits.</li>
+          <li>Verify the benchmark duration and request mix match the baseline run.</li>
+        </ul>
+      </article>
+  </section>
 </body>
 </html>
