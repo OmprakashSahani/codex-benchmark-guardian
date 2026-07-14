@@ -15,6 +15,7 @@ The project focuses on:
 - Markdown reports that fit naturally into GitHub issues, pull requests, and CI summaries.
 - Optional self-contained HTML reports for browser-friendly benchmark reviews.
 - Regression Triage Advisor guidance that explains likely areas, why each regression matters, and what to check next.
+- Optional Codex Fix Prompt Generator that writes a ready-to-use Markdown prompt for investigating benchmark regressions with Codex.
 - Simple JSON inputs so teams can integrate existing benchmark output without adopting a large platform.
 
 ## Features
@@ -26,6 +27,7 @@ The project focuses on:
 - Regression detection with severity classification for `higher_is_worse` and `lower_is_worse` metrics.
 - Markdown report generation with summary counts, per-metric status, and regression triage guidance.
 - Optional HTML report generation with summary counts, per-metric status tables, and regression triage guidance.
+- Optional Codex fix prompt generation for Build Week workflows with regressed metrics, triage guidance, and suggested quality checks.
 - CI-friendly failure mode for benchmark regressions with `--fail-on-regression`.
 - Example benchmark files under `examples/`.
 - Pytest and Ruff quality checks wired for developer workflows and CI.
@@ -84,6 +86,12 @@ Generate Markdown and HTML reports from the same comparison:
 cbg compare-files examples/baseline.json examples/current.json --threshold 10 --report reports/report.md --html-report reports/report.html
 ```
 
+Generate a Codex fix prompt that can be pasted into Codex when benchmark regressions need investigation:
+
+```bash
+cbg compare-files examples/baseline.json examples/current.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --codex-prompt reports/codex_fix_prompt.md
+```
+
 Run a CI-style smoke check with data that should not regress:
 
 ```bash
@@ -91,6 +99,18 @@ cbg compare-files examples/baseline.json examples/current_no_regression.json --t
 ```
 
 The `--fail-on-regression` flag preserves normal report generation, then exits with a non-zero status code if regressions were found. This is useful in CI workflows where benchmark regressions should block a pull request or deployment. Without the flag, `compare-files` keeps the existing behavior and exits successfully even when regressions are reported.
+
+## Codex Fix Prompt Generator
+
+The Codex Fix Prompt Generator is a Build Week-focused helper for turning benchmark regressions into an actionable Codex task. Pass `--codex-prompt` to `cbg compare-files` to write a deterministic Markdown prompt with the project title, comparison totals, regressed metrics only, metric directions, baseline and current values, change percentages, severity, and Regression Triage Advisor guidance.
+
+When regressions are detected, the prompt asks Codex to inspect the repository, identify likely causes, propose a minimal fix, add or update tests, and run project checks. It also includes the suggested checks `make lint`, `make format-check`, `make test`, and `make demo-ci`. If no regressions are detected, the prompt says no regression fix is needed and suggests reviewing benchmark stability instead.
+
+Example command:
+
+```bash
+cbg compare-files examples/baseline.json examples/current.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --codex-prompt reports/codex_fix_prompt.md
+```
 
 ## Metric direction
 
@@ -222,13 +242,13 @@ make install        # Install the project with development dependencies
 make lint           # Run Ruff lint checks
 make format-check   # Verify Ruff formatting
 make test           # Run the pytest suite
-make demo           # Generate Markdown and HTML reports from the example benchmarks
+make demo           # Generate Markdown, HTML, and Codex prompt reports from the example benchmarks
 make demo-ci        # Run a passing CI-style smoke check with regression failure enabled
 make demo-ci-fail   # Demonstrate expected CI failure handling for regressions
-make clean-reports  # Remove generated report files
+make clean-reports  # Remove generated report and Codex prompt files
 ```
 
-`make demo` compares `examples/baseline.json` and `examples/current.json` to show a regression report without failing the command. `make demo-ci` compares `examples/baseline.json` and `examples/current_no_regression.json` as a passing CI-style smoke check with `--fail-on-regression`. `make demo-ci-fail` intentionally compares the regressing `examples/current.json` file with `--fail-on-regression`, handles the expected non-zero exit gracefully, and prints a confirmation message. All demo targets apply per-metric directions from `examples/directions.json` and write `reports/report.md` plus `reports/report.html`.
+`make demo` compares `examples/baseline.json` and `examples/current.json` to show a regression report without failing the command. `make demo-ci` compares `examples/baseline.json` and `examples/current_no_regression.json` as a passing CI-style smoke check with `--fail-on-regression`. `make demo-ci-fail` intentionally compares the regressing `examples/current.json` file with `--fail-on-regression`, handles the expected non-zero exit gracefully, and prints a confirmation message. All demo targets apply per-metric directions from `examples/directions.json` and write `reports/report.md` plus `reports/report.html`; `make demo` also writes `reports/codex_fix_prompt.md`.
 
 ## Quality checks
 

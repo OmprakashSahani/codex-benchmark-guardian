@@ -13,7 +13,7 @@ format-check:
 	ruff format --check .
 
 demo:
-	cbg compare-files examples/baseline.json examples/current.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --html-report reports/report.html
+	cbg compare-files examples/baseline.json examples/current.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --html-report reports/report.html --codex-prompt reports/codex_fix_prompt.md
 
 demo-ci:
 	cbg compare-files examples/baseline.json examples/current_no_regression.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --html-report reports/report.html --fail-on-regression
@@ -38,4 +38,4 @@ demo-ci-fail:
 	fi
 
 clean-reports:
-	rm -f reports/report.md reports/report.html
+	rm -f reports/report.md reports/report.html reports/codex_fix_prompt.md

@@ -12,7 +12,11 @@ from codex_benchmark_guardian.benchmarks import (
     load_directions_config,
 )
 from codex_benchmark_guardian.regression import MetricDirection, detect_regression
-from codex_benchmark_guardian.report import generate_html_report, generate_markdown_report
+from codex_benchmark_guardian.report import (
+    generate_codex_fix_prompt,
+    generate_html_report,
+    generate_markdown_report,
+)
 
 app = typer.Typer(
     name="cbg",
@@ -135,6 +139,13 @@ def compare_files(
             help="Optional path where the HTML report should be written.",
         ),
     ] = None,
+    codex_prompt_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--codex-prompt",
+            help="Optional path where a Codex regression-fix prompt should be written.",
+        ),
+    ] = None,
     direction: Annotated[
         MetricDirection,
         typer.Option(
@@ -192,12 +203,19 @@ def compare_files(
         html_report_path.parent.mkdir(parents=True, exist_ok=True)
         html_report_path.write_text(html_report, encoding="utf-8")
 
+    if codex_prompt_path is not None:
+        codex_prompt = generate_codex_fix_prompt(results)
+        codex_prompt_path.parent.mkdir(parents=True, exist_ok=True)
+        codex_prompt_path.write_text(codex_prompt, encoding="utf-8")
+
     regression_count = sum(result.is_regression for result in results)
     console.print(f"Compared {len(results)} metrics")
     console.print(f"Regressions detected: {regression_count}")
     console.print(f"Report written to: {report_path}")
     if html_report_path is not None:
         console.print(f"HTML report written to: {html_report_path}")
+    if codex_prompt_path is not None:
+        console.print(f"Codex fix prompt written to: {codex_prompt_path}")
 
     if fail_on_regression and regression_count > 0:
         console.print(
