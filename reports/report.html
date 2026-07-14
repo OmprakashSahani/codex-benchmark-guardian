@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codex Benchmark Guardian Report</title>
+  <style>
+    body {
+      color: #172033;
+      font-family: Arial, sans-serif;
+      line-height: 1.5;
+      margin: 2rem auto;
+      max-width: 960px;
+      padding: 0 1rem;
+    }
+    h1 { margin-bottom: 0.25rem; }
+    .summary {
+      background: #f5f7fb;
+      border: 1px solid #d9e0ee;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      padding: 1rem;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th,
+    td {
+      border: 1px solid #d9e0ee;
+      padding: 0.6rem;
+      text-align: left;
+    }
+    th { background: #edf2fb; }
+    .regression { color: #b42318; font-weight: bold; }
+    .ok { color: #027a48; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Codex Benchmark Guardian</h1>
+  <section class="summary" aria-labelledby="summary-heading">
+    <h2 id="summary-heading">Summary</h2>
+    <p>Total compared metrics: 3</p>
+    <p>Regressions detected: 1</p>
+  </section>
+  <table>
+    <thead>
+      <tr>
+        <th>Metric</th>
+        <th>Baseline</th>
+        <th>Current</th>
+        <th>Change Percent</th>
+        <th>Threshold</th>
+        <th>Status</th>
+        <th>Severity</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>latency_ms</td>
+          <td>100</td>
+          <td>125</td>
+          <td>25.00%</td>
+          <td>10.00%</td>
+          <td class="regression">Regression</td>
+          <td>high</td>
+        </tr>
+        <tr>
+          <td>memory_mb</td>
+          <td>256</td>
+          <td>260</td>
+          <td>1.56%</td>
+          <td>10.00%</td>
+          <td class="ok">OK</td>
+          <td>none</td>
+        </tr>
+        <tr>
+          <td>runtime_s</td>
+          <td>2.5</td>
+          <td>2.7</td>
+          <td>8.00%</td>
+          <td>10.00%</td>
+          <td class="ok">OK</td>
+          <td>none</td>
+        </tr>
+    </tbody>
+  </table>
+</body>
+</html>
