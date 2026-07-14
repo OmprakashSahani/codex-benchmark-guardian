@@ -105,30 +105,30 @@ The `--fail-on-regression` flag preserves normal report generation, then exits w
 Generate a ready-to-use GitHub Actions benchmark guardrail workflow:
 
 ```bash
-cbg init-ci --output reports/benchmark_guardian_ci.yml
+cbg init-ci
 ```
 
-The generated workflow runs on `push` and `pull_request`, uses Ubuntu with Python 3.12, installs the project with `pip install -e ".[dev]"`, and runs `cbg compare-files` against `examples/baseline.json`, `examples/current_no_regression.json`, and `examples/directions.json`. It writes `reports/report.md`, `reports/report.html`, and `reports/codex_fix_prompt.md`, then fails the workflow if a regression is detected.
+The generated workflow writes to `.github/workflows/benchmark-guardian.yml` by default, runs on `push` and `pull_request`, uses Ubuntu with Python 3.12, installs the project with `pip install -e ".[dev]"`, and runs `cbg compare-files` against `examples/baseline.json`, `examples/current_no_regression.json`, and `examples/directions.json`. It writes `reports/report.md`, `reports/report.html`, and `reports/codex_fix_prompt.md`, then fails the workflow if a regression is detected.
 
-Customize the generated workflow inputs with `--baseline`, `--current`, `--directions-config`, `--threshold`, `--python-version`, and `--output` when your benchmark file paths or runtime differ from the defaults.
+Customize the generated workflow inputs with `--baseline`, `--current`, `--directions-config`, `--threshold`, `--python-version`, and `--output` when your benchmark file paths, runtime, or output location differ from the defaults.
 
 ## CI Guardrail Generator
 
-The CI Guardrail Generator creates a deterministic GitHub Actions workflow YAML file for enforcing benchmark comparisons in pull requests and pushes. It is designed as a quick starting point for repositories that already keep benchmark JSON files under version control or generate them as part of CI.
+The CI Guardrail Generator creates a deterministic GitHub Actions workflow YAML file for enforcing benchmark comparisons in pull requests and pushes. By default, `cbg init-ci` writes `.github/workflows/benchmark-guardian.yml`, which is a location GitHub Actions automatically discovers. It is designed as a quick starting point for repositories that already keep benchmark JSON files under version control or generate them as part of CI.
 
 Default command:
 
 ```bash
-cbg init-ci --output reports/benchmark_guardian_ci.yml
+cbg init-ci
 ```
 
 Customized example:
 
 ```bash
-cbg init-ci --baseline examples/baseline.json --current examples/current_no_regression.json --directions-config examples/directions.json --threshold 10 --python-version 3.12 --output reports/benchmark_guardian_ci.yml
+cbg init-ci --baseline examples/baseline.json --current examples/current_no_regression.json --directions-config examples/directions.json --threshold 10 --python-version 3.12 --output .github/workflows/benchmark-guardian.yml
 ```
 
-By default, the workflow runs `cbg compare-files examples/baseline.json examples/current_no_regression.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --html-report reports/report.html --codex-prompt reports/codex_fix_prompt.md --fail-on-regression`.
+By default, the workflow runs `cbg compare-files examples/baseline.json examples/current_no_regression.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --html-report reports/report.html --codex-prompt reports/codex_fix_prompt.md --fail-on-regression`. Use `--output` if you want to write the workflow somewhere else, such as `reports/benchmark_guardian_ci.yml` for a local demo artifact instead of actual GitHub Actions installation.
 
 ## Codex Fix Prompt Generator
 
@@ -274,12 +274,12 @@ make format-check   # Verify Ruff formatting
 make test           # Run the pytest suite
 make demo           # Generate Markdown, HTML, and Codex prompt reports from the example benchmarks
 make demo-ci        # Run a passing CI-style smoke check with regression failure enabled
-make demo-init-ci   # Generate a sample benchmark guardrail GitHub Actions workflow
+make demo-init-ci   # Generate a demo benchmark guardrail workflow under reports/
 make demo-ci-fail   # Demonstrate expected CI failure handling for regressions
 make clean-reports  # Remove generated report and Codex prompt files
 ```
 
-`make demo` compares `examples/baseline.json` and `examples/current.json` to show a regression report without failing the command. `make demo-ci` compares `examples/baseline.json` and `examples/current_no_regression.json` as a passing CI-style smoke check with `--fail-on-regression`. `make demo-init-ci` writes `reports/benchmark_guardian_ci.yml` with the default GitHub Actions benchmark guardrail workflow. `make demo-ci-fail` intentionally compares the regressing `examples/current.json` file with `--fail-on-regression`, handles the expected non-zero exit gracefully, and prints a confirmation message. All demo targets apply per-metric directions from `examples/directions.json` and write `reports/report.md` plus `reports/report.html`; `make demo` also writes `reports/codex_fix_prompt.md`.
+`make demo` compares `examples/baseline.json` and `examples/current.json` to show a regression report without failing the command. `make demo-ci` compares `examples/baseline.json` and `examples/current_no_regression.json` as a passing CI-style smoke check with `--fail-on-regression`. `make demo-init-ci` writes a demo copy to `reports/benchmark_guardian_ci.yml`; use plain `cbg init-ci` to install the workflow at `.github/workflows/benchmark-guardian.yml` for GitHub Actions. `make demo-ci-fail` intentionally compares the regressing `examples/current.json` file with `--fail-on-regression`, handles the expected non-zero exit gracefully, and prints a confirmation message. All demo targets apply per-metric directions from `examples/directions.json` and write `reports/report.md` plus `reports/report.html`; `make demo` also writes `reports/codex_fix_prompt.md`.
 
 ## Quality checks
 

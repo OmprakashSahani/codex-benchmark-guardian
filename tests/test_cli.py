@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 from typer.testing import CliRunner
 
@@ -379,8 +380,8 @@ def test_compare_files_command_creates_codex_prompt(tmp_path) -> None:
     assert "Request path latency or dependency wait time" in prompt
 
 
-def test_init_ci_command_creates_output_file(tmp_path) -> None:
-    output_path = tmp_path / "reports" / "benchmark_guardian_ci.yml"
+def test_init_ci_command_creates_output_file_and_parent_dirs(tmp_path) -> None:
+    output_path = tmp_path / "nested" / "reports" / "benchmark_guardian_ci.yml"
 
     result = runner.invoke(app, ["init-ci", "--output", str(output_path)])
 
@@ -390,4 +391,18 @@ def test_init_ci_command_creates_output_file(tmp_path) -> None:
     workflow = output_path.read_text(encoding="utf-8")
     assert "cbg compare-files" in workflow
     assert "--fail-on-regression" in workflow
-    assert "--codex-prompt reports/codex_fix_prompt.md" in workflow
+    assert "--codex-prompt 'reports/codex_fix_prompt.md'" in workflow
+
+
+def test_init_ci_command_uses_default_github_actions_output(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["init-ci"], catch_exceptions=False, env={})
+
+    assert result.exit_code == 0
+    assert (
+        "CI guardrail workflow written to: .github/workflows/benchmark-guardian.yml"
+        in result.output
+    )
+    default_output = Path(".github/workflows/benchmark-guardian.yml")
+    assert default_output.exists()
