@@ -345,3 +345,35 @@ def test_compare_files_command_rejects_invalid_directions_config(tmp_path) -> No
     assert result.exit_code != 0
     assert "invalid direction for latency_ms" in result.output
     assert not report_path.exists()
+
+
+def test_compare_files_command_creates_codex_prompt(tmp_path) -> None:
+    baseline_path = tmp_path / "baseline.json"
+    current_path = tmp_path / "current.json"
+    report_path = tmp_path / "reports" / "report.md"
+    codex_prompt_path = tmp_path / "reports" / "codex_fix_prompt.md"
+    baseline_path.write_text(json.dumps({"latency_ms": 100.0}), encoding="utf-8")
+    current_path.write_text(json.dumps({"latency_ms": 125.0}), encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "compare-files",
+            str(baseline_path),
+            str(current_path),
+            "--threshold",
+            "10",
+            "--report",
+            str(report_path),
+            "--codex-prompt",
+            str(codex_prompt_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Codex fix prompt written to:" in result.output
+    assert codex_prompt_path.exists()
+    prompt = codex_prompt_path.read_text(encoding="utf-8")
+    assert "| latency_ms | higher_is_worse | 100 | 125 | 25.00% | high |" in prompt
+    assert "Regression Triage Guidance" in prompt
+    assert "Request path latency or dependency wait time" in prompt

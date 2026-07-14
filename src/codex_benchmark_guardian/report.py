@@ -54,6 +54,95 @@ def generate_markdown_report(results: Sequence[RegressionResult]) -> str:
     return "\n".join(lines)
 
 
+def generate_codex_fix_prompt(results: Sequence[RegressionResult]) -> str:
+    """Generate a Markdown prompt for Codex to investigate benchmark regressions."""
+    regression_results = [result for result in results if result.is_regression]
+    regression_count = len(regression_results)
+    lines = [
+        "# Codex Benchmark Guardian",
+        "",
+        "## Codex Fix Prompt",
+        "",
+        f"Total compared metrics: {len(results)}",
+        f"Regressions detected: {regression_count}",
+        "",
+    ]
+
+    if regression_results:
+        lines.extend(
+            [
+                (
+                    "Benchmark regressions were detected. Use this prompt to investigate "
+                    "and prepare a minimal, well-tested fix."
+                ),
+                "",
+                "## Regressed Metrics",
+                "",
+                "| Metric | Direction | Baseline | Current | Change | Severity |",
+                "| --- | --- | ---: | ---: | ---: | --- |",
+            ]
+        )
+        for result in regression_results:
+            lines.append(
+                "| "
+                f"{result.metric_name} | "
+                f"{result.direction.value} | "
+                f"{result.baseline_value:g} | "
+                f"{result.current_value:g} | "
+                f"{result.change_percent:.2f}% | "
+                f"{result.severity} |"
+            )
+
+        triage_notes = generate_triage_notes(results)
+        if triage_notes:
+            lines.extend(["", "## Regression Triage Guidance", ""])
+            for note in triage_notes:
+                lines.extend(
+                    [
+                        f"### {note.metric_name}",
+                        "",
+                        f"- **Likely area:** {note.likely_area}",
+                        f"- **Why it matters:** {note.why_it_matters}",
+                        "- **Suggested checks:**",
+                    ]
+                )
+                lines.extend(f"  - {check}" for check in note.suggested_checks)
+                lines.append("")
+    else:
+        lines.extend(
+            [
+                "No benchmark regressions were detected, so no regression fix is needed.",
+                (
+                    "Review benchmark stability, thresholds, and measurement noise "
+                    "before making changes."
+                ),
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "## Task for Codex",
+            "",
+            (
+                "Inspect this repository and the benchmark results above. Identify possible "
+                "causes for any regression, propose a minimal fix, add or update tests "
+                "that cover the behavior, and run the project checks before finishing."
+            ),
+            "",
+            "Suggested quality checks:",
+            "",
+            "- `make lint`",
+            "- `make format-check`",
+            "- `make test`",
+            "- `make demo-ci`",
+            "",
+        ]
+    )
+
+    return "\n".join(lines)
+
+
 def generate_html_report(results: Sequence[RegressionResult]) -> str:
     """Generate a self-contained HTML benchmark comparison report."""
     regression_count = sum(result.is_regression for result in results)
