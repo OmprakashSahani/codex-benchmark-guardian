@@ -1,4 +1,4 @@
-.PHONY: install test lint format-check demo demo-ci clean-reports
+.PHONY: install test lint format-check demo demo-ci demo-ci-fail clean-reports
 
 install:
 	pip install -e ".[dev]"
@@ -16,7 +16,26 @@ demo:
 	cbg compare-files examples/baseline.json examples/current.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --html-report reports/report.html
 
 demo-ci:
-	cbg compare-files examples/baseline.json examples/current.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --html-report reports/report.html --fail-on-regression
+	cbg compare-files examples/baseline.json examples/current_no_regression.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --html-report reports/report.html --fail-on-regression
+
+demo-ci-fail:
+	@output=$$(mktemp); \
+	if cbg compare-files examples/baseline.json examples/current.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --html-report reports/report.html --fail-on-regression >$$output 2>&1; then \
+		cat $$output; \
+		rm -f $$output; \
+		echo "Expected benchmark regressions, but the comparison passed."; \
+		exit 1; \
+	else \
+		status=$$?; \
+		cat $$output; \
+		if grep -q "benchmark regression" $$output; then \
+			rm -f $$output; \
+			echo "CI correctly failed because benchmark regressions were detected."; \
+		else \
+			rm -f $$output; \
+			exit $$status; \
+		fi; \
+	fi
 
 clean-reports:
 	rm -f reports/report.md reports/report.html

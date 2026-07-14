@@ -83,10 +83,10 @@ Generate Markdown and HTML reports from the same comparison:
 cbg compare-files examples/baseline.json examples/current.json --threshold 10 --report reports/report.md --html-report reports/report.html
 ```
 
-Fail CI when one or more benchmark regressions are detected:
+Run a CI-style smoke check with data that should not regress:
 
 ```bash
-cbg compare-files examples/baseline.json examples/current.json --threshold 10 --report reports/report.md --fail-on-regression
+cbg compare-files examples/baseline.json examples/current_no_regression.json --threshold 10 --report reports/report.md --fail-on-regression
 ```
 
 The `--fail-on-regression` flag preserves normal report generation, then exits with a non-zero status code if regressions were found. This is useful in CI workflows where benchmark regressions should block a pull request or deployment. Without the flag, `compare-files` keeps the existing behavior and exits successfully even when regressions are reported.
@@ -175,7 +175,8 @@ Codex was used to help implement and refine the core developer workflow for this
 ├── .github/workflows/ci.yml      # GitHub Actions quality checks
 ├── examples/                     # Example benchmark JSON files
 │   ├── baseline.json
-│   └── current.json
+│   ├── current.json
+│   └── current_no_regression.json
 ├── reports/                      # Generated Markdown report examples
 │   └── report.md
 ├── src/codex_benchmark_guardian/ # CLI and benchmark comparison package
@@ -199,11 +200,12 @@ make lint           # Run Ruff lint checks
 make format-check   # Verify Ruff formatting
 make test           # Run the pytest suite
 make demo           # Generate Markdown and HTML reports from the example benchmarks
-make demo-ci        # Run the example comparison with CI regression failure enabled
+make demo-ci        # Run a passing CI-style smoke check with regression failure enabled
+make demo-ci-fail   # Demonstrate expected CI failure handling for regressions
 make clean-reports  # Remove generated report files
 ```
 
-The demo targets compare `examples/baseline.json` and `examples/current.json`, apply per-metric directions from `examples/directions.json`, and write `reports/report.md` plus `reports/report.html`.
+`make demo` compares `examples/baseline.json` and `examples/current.json` to show a regression report without failing the command. `make demo-ci` compares `examples/baseline.json` and `examples/current_no_regression.json` as a passing CI-style smoke check with `--fail-on-regression`. `make demo-ci-fail` intentionally compares the regressing `examples/current.json` file with `--fail-on-regression`, handles the expected non-zero exit gracefully, and prints a confirmation message. All demo targets apply per-metric directions from `examples/directions.json` and write `reports/report.md` plus `reports/report.html`.
 
 ## Quality checks
 
