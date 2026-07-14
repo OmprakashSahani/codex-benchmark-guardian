@@ -1,0 +1,32 @@
+name: Benchmark Guardian
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  benchmark-guardrail:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install project
+        run: pip install -e ".[dev]"
+
+      - name: Run benchmark regression guardrail
+        run: >-
+          cbg compare-files
+          'examples/baseline.json'
+          'examples/current_no_regression.json'
+          --threshold 10
+          --directions-config 'examples/directions.json'
+          --report 'reports/report.md'
+          --html-report 'reports/report.html'
+          --codex-prompt 'reports/codex_fix_prompt.md'
+          --fail-on-regression
