@@ -1,6 +1,6 @@
 # Codex Benchmark Guardian
 
-Codex Benchmark Guardian is a CLI-first Python developer tool for comparing benchmark results, detecting performance regressions, and generating Markdown reports for software reliability workflows.
+Codex Benchmark Guardian is a CLI-first Python developer tool for comparing benchmark results, detecting performance regressions, and generating Markdown and optional HTML reports for software reliability workflows.
 
 Built for OpenAI Build Week, it helps teams turn raw benchmark numbers into clear pass/fail signals that can be reviewed locally, shared in pull requests, or enforced in CI.
 
@@ -13,6 +13,7 @@ The project focuses on:
 - Fast feedback for developers running local benchmark comparisons.
 - Clear regression thresholds that make performance changes easier to discuss.
 - Markdown reports that fit naturally into GitHub issues, pull requests, and CI summaries.
+- Optional self-contained HTML reports for browser-friendly benchmark reviews.
 - Simple JSON inputs so teams can integrate existing benchmark output without adopting a large platform.
 
 ## Features
@@ -23,6 +24,7 @@ The project focuses on:
 - Multi-metric benchmark comparison across matching numeric metrics.
 - Regression detection with severity classification.
 - Markdown report generation with summary counts and per-metric status.
+- Optional HTML report generation with summary counts and per-metric status tables.
 - Example benchmark files under `examples/`.
 - Pytest and Ruff quality checks wired for developer workflows and CI.
 
@@ -56,6 +58,12 @@ Compare benchmark JSON files and generate a Markdown report:
 cbg compare-files examples/baseline.json examples/current.json --threshold 10 --report reports/report.md
 ```
 
+Generate Markdown and HTML reports from the same comparison:
+
+```bash
+cbg compare-files examples/baseline.json examples/current.json --threshold 10 --report reports/report.md --html-report reports/report.html
+```
+
 ## Example output
 
 Single-metric comparison output:
@@ -77,9 +85,11 @@ Regressions detected: 1
 Report written to: reports/report.md
 ```
 
+When `--html-report reports/report.html` is provided, the command also writes a self-contained HTML report and prints its path.
+
 ## Report example
 
-The `compare-files` command writes a Markdown report like this:
+The `compare-files` command writes a Markdown report like this. When `--html-report` is provided, it also writes a browser-friendly HTML report with the same summary and table data:
 
 ```markdown
 # Benchmark Comparison Report
@@ -100,7 +110,7 @@ Codex was used to help implement and refine the core developer workflow for this
 
 - JSON benchmark comparison between baseline and current files.
 - CLI integration for single-metric and file-based comparisons.
-- Regression report generation in Markdown.
+- Regression report generation in Markdown and optional HTML.
 - Unit and CLI tests for benchmark loading, comparison, and regression detection.
 - Example benchmark inputs and generated report output.
 - GitHub Actions CI configuration for automated quality checks.
