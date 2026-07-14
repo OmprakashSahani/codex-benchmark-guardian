@@ -49,6 +49,28 @@ def test_compare_command_no_regression() -> None:
     assert "No regression detected" in result.output
 
 
+def test_compare_command_detects_lower_is_worse_regression() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "compare",
+            "throughput_rps",
+            "1000",
+            "850",
+            "--threshold",
+            "10",
+            "--direction",
+            "lower_is_worse",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "throughput_rps" in result.output
+    assert "-15.00%" in result.output
+    assert "lower_is_worse" in result.output
+    assert "Regression detected" in result.output
+
+
 def test_compare_files_command_creates_report(tmp_path) -> None:
     baseline_path = tmp_path / "baseline.json"
     current_path = tmp_path / "current.json"
@@ -82,9 +104,11 @@ def test_compare_files_command_creates_report(tmp_path) -> None:
     assert report_path.exists()
     report = report_path.read_text(encoding="utf-8")
     assert "# Benchmark Comparison Report" in report
-    assert "| latency_ms | 100 | 125 | 25.00% | 10.00% | Regression | high |" in report
-    assert "| memory_mb | 256 | 260 | 1.56% | 10.00% | OK | none |" in report
-    assert "| runtime_s | 2.5 | 2.7 | 8.00% | 10.00% | OK | none |" in report
+    assert (
+        "| latency_ms | higher_is_worse | 100 | 125 | 25.00% | 10.00% | Regression | high |"
+    ) in report
+    assert ("| memory_mb | higher_is_worse | 256 | 260 | 1.56% | 10.00% | OK | none |") in report
+    assert ("| runtime_s | higher_is_worse | 2.5 | 2.7 | 8.00% | 10.00% | OK | none |") in report
 
 
 def test_compare_files_command_creates_html_report(tmp_path) -> None:
@@ -214,3 +238,110 @@ def test_compare_files_with_fail_on_regression_exits_zero_without_regressions(
     assert "Regressions detected: 0" in result.output
     assert "Failing because" not in result.output
     assert report_path.exists()
+
+
+def test_compare_files_command_with_lower_is_worse_direction(tmp_path) -> None:
+    baseline_path = tmp_path / "baseline.json"
+    current_path = tmp_path / "current.json"
+    report_path = tmp_path / "reports" / "report.md"
+    html_report_path = tmp_path / "reports" / "report.html"
+    baseline_path.write_text(json.dumps({"throughput_rps": 1000.0}), encoding="utf-8")
+    current_path.write_text(json.dumps({"throughput_rps": 850.0}), encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "compare-files",
+            str(baseline_path),
+            str(current_path),
+            "--threshold",
+            "10",
+            "--direction",
+            "lower_is_worse",
+            "--report",
+            str(report_path),
+            "--html-report",
+            str(html_report_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Regressions detected: 1" in result.output
+    assert "lower_is_worse" in report_path.read_text(encoding="utf-8")
+    html_report = html_report_path.read_text(encoding="utf-8")
+    assert "<th>Direction</th>" in html_report
+    assert "<td>lower_is_worse</td>" in html_report
+
+
+def test_compare_files_command_with_directions_config(tmp_path) -> None:
+    baseline_path = tmp_path / "baseline.json"
+    current_path = tmp_path / "current.json"
+    directions_path = tmp_path / "directions.json"
+    report_path = tmp_path / "reports" / "report.md"
+    baseline_path.write_text(
+        json.dumps({"latency_ms": 100.0, "throughput_rps": 1000.0}),
+        encoding="utf-8",
+    )
+    current_path.write_text(
+        json.dumps({"latency_ms": 125.0, "throughput_rps": 850.0}),
+        encoding="utf-8",
+    )
+    directions_path.write_text(
+        json.dumps({"throughput_rps": "lower_is_worse"}),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "compare-files",
+            str(baseline_path),
+            str(current_path),
+            "--threshold",
+            "10",
+            "--directions-config",
+            str(directions_path),
+            "--report",
+            str(report_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Regressions detected: 2" in result.output
+    report = report_path.read_text(encoding="utf-8")
+    assert (
+        "| latency_ms | higher_is_worse | 100 | 125 | 25.00% | 10.00% | Regression | high |"
+    ) in report
+    assert (
+        "| throughput_rps | lower_is_worse | 1000 | 850 | -15.00% | 10.00% | Regression | medium |"
+    ) in report
+
+
+def test_compare_files_command_rejects_invalid_directions_config(tmp_path) -> None:
+    baseline_path = tmp_path / "baseline.json"
+    current_path = tmp_path / "current.json"
+    directions_path = tmp_path / "directions.json"
+    report_path = tmp_path / "reports" / "report.md"
+    baseline_path.write_text(json.dumps({"latency_ms": 100.0}), encoding="utf-8")
+    current_path.write_text(json.dumps({"latency_ms": 125.0}), encoding="utf-8")
+    directions_path.write_text(
+        json.dumps({"latency_ms": "sideways_is_worse"}),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "compare-files",
+            str(baseline_path),
+            str(current_path),
+            "--directions-config",
+            str(directions_path),
+            "--report",
+            str(report_path),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "invalid direction for latency_ms" in result.output
+    assert not report_path.exists()

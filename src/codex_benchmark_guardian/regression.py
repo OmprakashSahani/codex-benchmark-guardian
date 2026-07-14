@@ -1,6 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
+
+
+class MetricDirection(StrEnum):
+    """Direction that defines which metric movement is considered worse."""
+
+    HIGHER_IS_WORSE = "higher_is_worse"
+    LOWER_IS_WORSE = "lower_is_worse"
 
 
 @dataclass(frozen=True)
@@ -14,6 +22,7 @@ class RegressionResult:
     threshold_percent: float
     is_regression: bool
     severity: str
+    direction: MetricDirection = MetricDirection.HIGHER_IS_WORSE
 
 
 def calculate_change_percent(baseline_value: float, current_value: float) -> float:
@@ -25,7 +34,8 @@ def calculate_change_percent(baseline_value: float, current_value: float) -> flo
 
 
 def classify_severity(change_percent: float) -> str:
-    """Classify regression severity based on percentage change."""
+    """Classify regression severity based on regression percentage magnitude."""
+    change_percent = abs(change_percent)
     if change_percent >= 50:
         return "critical"
     if change_percent >= 25:
@@ -40,19 +50,18 @@ def detect_regression(
     baseline_value: float,
     current_value: float,
     threshold_percent: float = 10.0,
+    direction: MetricDirection = MetricDirection.HIGHER_IS_WORSE,
 ) -> RegressionResult:
-    """
-    Detect whether a benchmark metric regressed.
-
-    For now, higher values are treated as worse.
-    Example: latency, runtime, memory usage.
-    """
+    """Detect whether a benchmark metric regressed for the configured direction."""
     change_percent = calculate_change_percent(
         baseline_value=baseline_value,
         current_value=current_value,
     )
 
-    is_regression = change_percent >= threshold_percent
+    if direction == MetricDirection.HIGHER_IS_WORSE:
+        is_regression = change_percent >= threshold_percent
+    else:
+        is_regression = change_percent <= -threshold_percent
 
     severity = classify_severity(change_percent) if is_regression else "none"
 
@@ -64,4 +73,5 @@ def detect_regression(
         threshold_percent=threshold_percent,
         is_regression=is_regression,
         severity=severity,
+        direction=direction,
     )

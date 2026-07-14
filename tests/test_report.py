@@ -1,4 +1,4 @@
-from codex_benchmark_guardian.regression import RegressionResult
+from codex_benchmark_guardian.regression import MetricDirection, RegressionResult
 from codex_benchmark_guardian.report import generate_html_report
 
 
@@ -21,6 +21,7 @@ def test_generate_html_report() -> None:
             threshold_percent=10.0,
             is_regression=False,
             severity="none",
+            direction=MetricDirection.LOWER_IS_WORSE,
         ),
     ]
 
@@ -31,7 +32,10 @@ def test_generate_html_report() -> None:
     assert '<h2 id="summary-heading">Summary</h2>' in report
     assert "Total compared metrics: 2" in report
     assert "Regressions detected: 1" in report
+    assert "<th>Direction</th>" in report
     assert "<th>Change Percent</th>" in report
     assert "<td>latency_ms</td>" in report
+    assert "<td>higher_is_worse</td>" in report
+    assert "<td>lower_is_worse</td>" in report
     assert '<td class="regression">Regression</td>' in report
     assert '<td class="ok">OK</td>' in report

@@ -6,8 +6,12 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
-from codex_benchmark_guardian.benchmarks import compare_benchmark_metrics, load_benchmark_file
-from codex_benchmark_guardian.regression import detect_regression
+from codex_benchmark_guardian.benchmarks import (
+    compare_benchmark_metrics,
+    load_benchmark_file,
+    load_directions_config,
+)
+from codex_benchmark_guardian.regression import MetricDirection, detect_regression
 from codex_benchmark_guardian.report import generate_html_report, generate_markdown_report
 
 app = typer.Typer(
@@ -48,12 +52,21 @@ def compare(
     metric_name: str,
     baseline_value: float,
     current_value: float,
-    threshold: float = typer.Option(
-        10.0,
-        "--threshold",
-        "-t",
-        help="Regression threshold percentage.",
-    ),
+    threshold: Annotated[
+        float,
+        typer.Option(
+            "--threshold",
+            "-t",
+            help="Regression threshold percentage.",
+        ),
+    ] = 10.0,
+    direction: Annotated[
+        MetricDirection,
+        typer.Option(
+            "--direction",
+            help="Metric direction that determines which movement is worse.",
+        ),
+    ] = MetricDirection.HIGHER_IS_WORSE,
 ) -> None:
     """Compare a baseline benchmark value against a current value."""
     result = detect_regression(
@@ -61,6 +74,7 @@ def compare(
         baseline_value=baseline_value,
         current_value=current_value,
         threshold_percent=threshold,
+        direction=direction,
     )
 
     console.print(f"[bold]Metric:[/bold] {result.metric_name}")
@@ -68,6 +82,7 @@ def compare(
     console.print(f"[bold]Current:[/bold] {result.current_value}")
     console.print(f"[bold]Change:[/bold] {result.change_percent:.2f}%")
     console.print(f"[bold]Threshold:[/bold] {result.threshold_percent:.2f}%")
+    console.print(f"[bold]Direction:[/bold] {result.direction.value}")
 
     if result.is_regression:
         console.print(f"[red]Regression detected[/red] | Severity: {result.severity}")
@@ -120,6 +135,24 @@ def compare_files(
             help="Optional path where the HTML report should be written.",
         ),
     ] = None,
+    direction: Annotated[
+        MetricDirection,
+        typer.Option(
+            "--direction",
+            help="Fallback metric direction for metrics not in --directions-config.",
+        ),
+    ] = MetricDirection.HIGHER_IS_WORSE,
+    directions_config_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--directions-config",
+            help="Optional JSON file mapping metric names to directions.",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+        ),
+    ] = None,
     fail_on_regression: Annotated[
         bool,
         typer.Option(
@@ -131,10 +164,20 @@ def compare_files(
     """Compare benchmark metrics from two JSON files and write reports."""
     baseline_metrics = load_benchmark_file(baseline_path)
     current_metrics = load_benchmark_file(current_path)
+    try:
+        directions = (
+            load_directions_config(directions_config_path)
+            if directions_config_path is not None
+            else None
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--directions-config") from exc
     results = compare_benchmark_metrics(
         baseline_metrics=baseline_metrics,
         current_metrics=current_metrics,
         threshold_percent=threshold,
+        direction=direction,
+        directions=directions,
     )
 
     if not results:

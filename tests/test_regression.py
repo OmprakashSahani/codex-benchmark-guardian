@@ -1,6 +1,7 @@
 import pytest
 
 from codex_benchmark_guardian.regression import (
+    MetricDirection,
     calculate_change_percent,
     classify_severity,
     detect_regression,
@@ -50,5 +51,34 @@ def test_detect_regression_when_threshold_not_exceeded() -> None:
         threshold_percent=10.0,
     )
 
+    assert result.is_regression is False
+    assert result.severity == "none"
+
+
+def test_detect_lower_is_worse_regression_when_threshold_exceeded() -> None:
+    result = detect_regression(
+        metric_name="throughput_rps",
+        baseline_value=1000.0,
+        current_value=850.0,
+        threshold_percent=10.0,
+        direction=MetricDirection.LOWER_IS_WORSE,
+    )
+
+    assert result.change_percent == -15.0
+    assert result.direction == MetricDirection.LOWER_IS_WORSE
+    assert result.is_regression is True
+    assert result.severity == "medium"
+
+
+def test_detect_lower_is_worse_no_regression_when_value_increases() -> None:
+    result = detect_regression(
+        metric_name="throughput_rps",
+        baseline_value=1000.0,
+        current_value=1100.0,
+        threshold_percent=10.0,
+        direction=MetricDirection.LOWER_IS_WORSE,
+    )
+
+    assert result.change_percent == 10.0
     assert result.is_regression is False
     assert result.severity == "none"
