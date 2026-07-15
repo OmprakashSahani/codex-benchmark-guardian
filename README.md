@@ -1,148 +1,309 @@
+<div align="center">
+
 # Codex Benchmark Guardian
+### Benchmark Regression Detection · Codex Handoff Automation · CI Performance Guardrails
 
-Codex Benchmark Guardian is a CLI-first Python developer tool for comparing benchmark results, detecting performance regressions, and generating Markdown and optional HTML reports for software reliability workflows.
+</div>
 
-Built for OpenAI Build Week, it helps teams turn raw benchmark numbers into clear pass/fail signals that can be reviewed locally, shared in pull requests, or enforced in CI.
+---
 
-## Why this project
+**Codex Benchmark Guardian** is a Python developer tool that turns raw benchmark comparisons into an actionable engineering workflow.
 
-Performance regressions are easy to miss when benchmark data lives in logs, ad hoc scripts, or disconnected JSON files. Codex Benchmark Guardian provides a small, review-friendly workflow for identifying changes before they reach users.
+It helps developers:
 
-The project focuses on:
+- Compare baseline and current benchmark results
+- Detect performance regressions across multiple metrics
+- Explain likely causes with deterministic triage guidance
+- Generate Codex-ready investigation and fix prompts
+- Create GitHub issue handoff files
+- Generate GitHub Actions benchmark guardrails
+- Review results through a CLI or interactive Streamlit dashboard
 
-- Fast feedback for developers running local benchmark comparisons.
-- Clear regression thresholds that make performance changes easier to discuss.
-- Markdown reports that fit naturally into GitHub issues, pull requests, and CI summaries.
-- Optional self-contained HTML reports for browser-friendly benchmark reviews.
-- Regression Triage Advisor guidance that explains likely areas, why each regression matters, and what to check next.
-- Optional Codex Fix Prompt Generator that writes a ready-to-use Markdown prompt for investigating benchmark regressions with Codex.
-- CI Guardrail Generator that writes a ready-to-use GitHub Actions workflow for benchmark regression checks.
-- Codex Handoff Pack that bundles reports, a Codex prompt, a GitHub issue template, and CI workflow for regression follow-through.
-- Simple JSON inputs so teams can integrate existing benchmark output without adopting a large platform.
+Built for **OpenAI Build Week**, the project connects benchmark analysis directly to developer follow-through:
 
-## Features
+**benchmark comparison → regression detection → triage guidance → Codex fix prompt → GitHub issue handoff → CI guardrail**
 
-- `cbg about` and `cbg version` commands for project metadata.
-- Single-metric comparison with configurable regression thresholds and metric direction support.
-- JSON benchmark loading from baseline and current result files.
-- Multi-metric benchmark comparison across matching numeric metrics.
-- Regression detection with severity classification for `higher_is_worse` and `lower_is_worse` metrics.
-- Markdown report generation with summary counts, per-metric status, and regression triage guidance.
-- Optional HTML report generation with summary counts, per-metric status tables, and regression triage guidance.
-- Optional Codex fix prompt generation for Build Week workflows with regressed metrics, triage guidance, and suggested quality checks.
-- Interactive Streamlit dashboard for judges and developers who want to run regression analysis without terminal commands.
-- CI-friendly failure mode for benchmark regressions with `--fail-on-regression`.
-- `cbg init-ci` command for generating a deterministic benchmark guardrail workflow.
-- `cbg handoff-pack` command for generating the final Build Week handoff bundle.
-- Example benchmark files under `examples/`.
-- Pytest and Ruff quality checks wired for developer workflows and CI.
+No credentials, API keys, accounts, or external services are required.
 
-## Installation
+---
 
-Codex Benchmark Guardian requires Python 3.12 or newer.
-
-Install the project in editable mode with development dependencies:
+## Judge Quickstart
 
 ```bash
+git clone https://github.com/OmprakashSahani/codex-benchmark-guardian.git
+cd codex-benchmark-guardian
 pip install -e ".[dev]"
+make lint
+make format-check
+make test
+make demo-handoff
+make dashboard
 ```
 
-## Quickstart
+Expected results:
 
-Run the project information command:
+- `make test` passes the complete test suite — the latest verified local run passed **72 tests**.
+- `make demo-handoff` generates the full Codex Handoff Pack under `reports/handoff/`.
+- The bundled sample detects **2 regressions**: `latency_ms` and `throughput_rps`.
+- `make dashboard` launches the interactive Streamlit dashboard.
+
+---
+
+## What Judges Should Test
+
+1. Run the local verification workflow:
 
 ```bash
+make lint
+make format-check
+make test
+```
+
+2. Generate the complete handoff bundle:
+
+```bash
+make demo-handoff
+```
+
+3. Open the generated Markdown report:
+
+```bash
+cat reports/handoff/report.md
+```
+
+The report should show **4 compared metrics** and **2 regressions**:
+
+- `latency_ms`
+- `throughput_rps`
+
+4. Launch the dashboard:
+
+```bash
+make dashboard
+```
+
+In the Streamlit dashboard:
+
+- Keep bundled sample data selected
+- Click **Run Analysis**
+- Confirm the dashboard shows 4 compared metrics and 2 regressions
+- Review the Regression Triage Advisor
+- Open the Codex Fix Prompt section
+- Open the GitHub issue handoff section
+- Open the CI Guardrail workflow section
+- Download generated reports and handoff artifacts if desired
+
+---
+
+## Demo
+
+Demo video: `<PASTE_YOUTUBE_DEMO_LINK_HERE>`
+
+### Launch Interactive Dashboard
+
+```bash
+make dashboard
+```
+
+### Generate Complete Handoff Pack
+
+```bash
+make demo-handoff
+```
+
+---
+
+## Core Systems
+
+### Benchmark Comparison Engine
+
+- Single-metric benchmark comparison
+- Baseline and current JSON file loading
+- Multi-metric comparison across matching numeric metrics
+- Configurable regression thresholds
+- Mixed-metric direction handling
+- Deterministic change-percentage calculation
+
+---
+
+### Regression Intelligence
+
+- `higher_is_worse` metric support
+- `lower_is_worse` metric support
+- Per-metric directions configuration
+- Regression severity classification
+- Summary counts and per-metric status
+- CI-friendly non-zero failure mode
+
+---
+
+### Regression Triage Advisor
+
+- Identifies the metric that regressed
+- Maps common metrics to likely affected areas
+- Explains why each regression matters
+- Recommends concrete investigation steps
+- Covers latency, runtime, memory, throughput, accuracy, recall, precision, and success-rate patterns
+
+---
+
+### Developer Handoff Automation
+
+- Markdown benchmark report generation
+- Self-contained HTML report generation
+- Codex Fix Prompt generation
+- GitHub issue handoff generation
+- Suggested repository quality checks
+- Complete Codex Handoff Pack generation
+
+---
+
+### Dashboard & CI Infrastructure
+
+- Interactive Streamlit dashboard
+- In-memory benchmark file uploads
+- Built-in sample benchmark data
+- Downloadable reports and handoff artifacts
+- Deterministic GitHub Actions workflow generation
+- Pull-request and push regression enforcement
+
+---
+
+## System Workflow
+
+```mermaid
+flowchart LR
+    A[Baseline JSON] --> C[Benchmark Comparison]
+    B[Current JSON] --> C
+    D[Threshold and Metric Directions] --> C
+    C --> E[Regression Detection]
+    E --> F[Severity Classification]
+    F --> G[Regression Triage Advisor]
+    G --> H[Markdown and HTML Reports]
+    G --> I[Codex Fix Prompt]
+    G --> J[GitHub Issue Handoff]
+    G --> K[CI Guardrail Workflow]
+```
+
+---
+
+## Example Capabilities
+
+### Project Information
+
+```bash
+cbg version
 cbg about
 ```
 
-Compare a single benchmark metric where higher values are worse, which is the default behavior:
+### Compare a Higher-Is-Worse Metric
 
 ```bash
 cbg compare latency_ms 100 125 --threshold 10
 ```
 
-Compare a metric where lower values are worse, such as throughput:
+### Compare a Lower-Is-Worse Metric
 
 ```bash
-cbg compare throughput_rps 1000 850 --threshold 10 --direction lower_is_worse
+cbg compare throughput_rps 1000 850 \
+  --threshold 10 \
+  --direction lower_is_worse
 ```
 
-Compare benchmark JSON files and generate a Markdown report:
+### Compare Benchmark Files
 
 ```bash
-cbg compare-files examples/baseline.json examples/current.json --threshold 10 --report reports/report.md
+cbg compare-files examples/baseline.json examples/current.json \
+  --threshold 10 \
+  --directions-config examples/directions.json \
+  --report reports/report.md
 ```
 
-Use `--direction lower_is_worse` as a global fallback for a file comparison when decreasing metric values represent regressions:
+### Generate Markdown, HTML, and Codex Prompt Outputs
 
 ```bash
-cbg compare-files examples/baseline.json examples/current.json --threshold 10 --direction lower_is_worse --report reports/report.md
+cbg compare-files examples/baseline.json examples/current.json \
+  --threshold 10 \
+  --directions-config examples/directions.json \
+  --report reports/report.md \
+  --html-report reports/report.html \
+  --codex-prompt reports/codex_fix_prompt.md
 ```
 
-For mixed benchmark files, pass a directions config that maps each metric to its direction:
+### Run a Passing CI-Style Check
 
 ```bash
-cbg compare-files examples/baseline.json examples/current.json --threshold 10 --directions-config examples/directions.json --report reports/report.md
+cbg compare-files examples/baseline.json examples/current_no_regression.json \
+  --threshold 10 \
+  --directions-config examples/directions.json \
+  --report reports/report.md \
+  --fail-on-regression
 ```
 
-Generate Markdown and HTML reports from the same comparison:
+`--fail-on-regression` preserves report generation and exits with a non-zero status when regressions are detected, allowing benchmark regressions to block pull requests or deployments.
 
-```bash
-cbg compare-files examples/baseline.json examples/current.json --threshold 10 --report reports/report.md --html-report reports/report.html
-```
+---
 
-Generate a Codex fix prompt that can be pasted into Codex when benchmark regressions need investigation:
+## Codex Handoff Pack
 
-```bash
-cbg compare-files examples/baseline.json examples/current.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --codex-prompt reports/codex_fix_prompt.md
-```
+The Codex Handoff Pack connects benchmark detection to investigation, remediation, team communication, and CI enforcement.
 
-
-Generate a complete Codex Handoff Pack for moving from benchmark regression detection to issue creation, Codex-assisted fixing, and CI guardrail setup. Plain `cbg handoff-pack` uses the bundled sample benchmark files (`examples/baseline.json` and `examples/current.json`) and automatically applies the bundled mixed-metric directions config (`examples/directions.json`):
+### Run Bundled Sample
 
 ```bash
 cbg handoff-pack
 ```
 
-Custom benchmark files can be used without a directions config; in that case, every metric uses the global fallback `--direction` value:
+Plain `cbg handoff-pack` uses:
+
+- `examples/baseline.json`
+- `examples/current.json`
+- `examples/directions.json`
+
+### Run with Custom Benchmark Files
 
 ```bash
-cbg handoff-pack --baseline base.json --current current.json --direction higher_is_worse --output-dir reports/handoff
+cbg handoff-pack \
+  --baseline base.json \
+  --current current.json \
+  --direction higher_is_worse \
+  --output-dir reports/handoff
 ```
 
-For custom mixed benchmark files, pass a directions config explicitly:
+### Run with Mixed Metric Directions
 
 ```bash
-cbg handoff-pack --baseline examples/baseline.json --current examples/current.json --directions-config examples/directions.json --threshold 10 --direction higher_is_worse --output-dir reports/handoff
+cbg handoff-pack \
+  --baseline examples/baseline.json \
+  --current examples/current.json \
+  --directions-config examples/directions.json \
+  --threshold 10 \
+  --direction higher_is_worse \
+  --output-dir reports/handoff
 ```
 
-The handoff pack writes `report.md`, `report.html`, `codex_fix_prompt.md`, `github_issue.md`, and `benchmark_guardian_ci.yml` into the output directory.
+### Generated Artifacts
 
-Run a CI-style smoke check with data that should not regress:
-
-```bash
-cbg compare-files examples/baseline.json examples/current_no_regression.json --threshold 10 --report reports/report.md --fail-on-regression
+```text
+reports/handoff/
+├── report.md
+├── report.html
+├── codex_fix_prompt.md
+├── github_issue.md
+└── benchmark_guardian_ci.yml
 ```
 
-The `--fail-on-regression` flag preserves normal report generation, then exits with a non-zero status code if regressions were found. This is useful in CI workflows where benchmark regressions should block a pull request or deployment. Without the flag, `compare-files` keeps the existing behavior and exits successfully even when regressions are reported.
+- `report.md` — benchmark comparison with Regression Triage Advisor guidance
+- `report.html` — self-contained browser-friendly report
+- `codex_fix_prompt.md` — ready-to-use Codex investigation and fix task
+- `github_issue.md` — issue-ready regression summary and engineering handoff
+- `benchmark_guardian_ci.yml` — GitHub Actions benchmark guardrail
 
-Generate a ready-to-use GitHub Actions benchmark guardrail workflow:
+When no regressions are detected, the pack is still generated and records that no regression fix or issue is currently required.
 
-```bash
-cbg init-ci
-```
-
-The generated workflow writes to `.github/workflows/benchmark-guardian.yml` by default, runs on `push` and `pull_request`, uses Ubuntu with Python 3.12, installs the project with `pip install -e ".[dev]"`, and runs `cbg compare-files` against `examples/baseline.json`, `examples/current_no_regression.json`, and `examples/directions.json`. It writes `reports/report.md`, `reports/report.html`, and `reports/codex_fix_prompt.md`, then fails the workflow if a regression is detected.
-
-Customize the generated workflow inputs with `--baseline`, `--current`, `--directions-config`, `--threshold`, `--python-version`, and `--output` when your benchmark file paths, runtime, or output location differ from the defaults.
+---
 
 ## Streamlit Dashboard
-
-Codex Benchmark Guardian also includes an interactive Streamlit dashboard for judges and developers who prefer a browser workflow. The dashboard lets you choose a regression threshold, use built-in sample data, upload baseline and current benchmark JSON files, optionally upload a per-metric directions config, and run the same benchmark comparison logic used by the CLI.
-
-After analysis runs, the dashboard shows total compared metrics, regressions detected, a metric status table, Regression Triage Advisor output for regressed metrics, and expandable generated artifacts for the Codex Fix Prompt, Codex Handoff Pack GitHub issue Markdown, and CI Guardrail workflow YAML. It also provides download buttons for the Markdown report, HTML report, Codex fix prompt, GitHub issue Markdown, and GitHub Actions workflow YAML.
-
-The generated CI Guardrail workflow follows the dashboard input source. Built-in sample data generates a ready workflow for the repository sample files at `examples/baseline.json`, `examples/current.json`, and `examples/directions.json`, using the threshold selected in the dashboard and including `--directions-config examples/directions.json`. Uploaded files are analyzed in-memory by Streamlit; before CI can use the downloaded workflow, save the baseline and current JSON files in your repository at the placeholder workflow paths (`benchmarks/baseline.json` and `benchmarks/current.json`) or edit the workflow paths to match your repository. If you upload a directions config, the generated workflow includes `--directions-config benchmarks/directions.json`, and the dashboard note reminds you to save the uploaded directions file at that path or edit the workflow. If you do not upload a directions config, the generated workflow omits `--directions-config` and relies on the fallback metric direction selected in the sidebar.
 
 Run locally with:
 
@@ -150,89 +311,40 @@ Run locally with:
 streamlit run app.py
 ```
 
-You can also use the Makefile shortcut:
+Or use:
 
 ```bash
 make dashboard
 ```
 
-For Streamlit Community Cloud deployment, point the app entry file at `app.py` and use `requirements.txt` so the deployment installs Codex Benchmark Guardian and Streamlit dependencies.
+The dashboard allows users to:
 
-## CI Guardrail Generator
+- Use bundled sample benchmark data
+- Upload baseline and current JSON files
+- Upload an optional per-metric directions config
+- Select a regression threshold
+- Select a fallback metric direction
+- Run the same comparison engine used by the CLI
+- View comparison totals and regression counts
+- Inspect metric status and severity
+- Review Regression Triage Advisor guidance
+- Preview the generated Codex Fix Prompt
+- Preview the GitHub issue handoff
+- Preview the generated CI workflow
+- Download Markdown, HTML, Codex prompt, issue, and CI artifacts
 
-The CI Guardrail Generator creates a deterministic GitHub Actions workflow YAML file for enforcing benchmark comparisons in pull requests and pushes. By default, `cbg init-ci` writes `.github/workflows/benchmark-guardian.yml`, which is a location GitHub Actions automatically discovers. It is designed as a quick starting point for repositories that already keep benchmark JSON files under version control or generate them as part of CI.
+For Streamlit Community Cloud, use `app.py` as the entry file and `requirements.txt` for deployment dependencies.
 
-Default command:
+---
 
-```bash
-cbg init-ci
-```
+## Metric Direction
 
-Customized example:
+Codex Benchmark Guardian supports two regression directions:
 
-```bash
-cbg init-ci --baseline examples/baseline.json --current examples/current_no_regression.json --directions-config examples/directions.json --threshold 10 --python-version 3.12 --output .github/workflows/benchmark-guardian.yml
-```
+- `higher_is_worse` — increases can represent regressions; useful for latency, runtime, memory, and error rate
+- `lower_is_worse` — decreases can represent regressions; useful for throughput, accuracy, recall, precision, and success rate
 
-By default, the workflow runs `cbg compare-files examples/baseline.json examples/current_no_regression.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --html-report reports/report.html --codex-prompt reports/codex_fix_prompt.md --fail-on-regression`. Use `--output` if you want to write the workflow somewhere else, such as `reports/benchmark_guardian_ci.yml` for a local demo artifact instead of actual GitHub Actions installation.
-
-## Codex Fix Prompt Generator
-
-The Codex Fix Prompt Generator is a Build Week-focused helper for turning benchmark regressions into an actionable Codex task. Pass `--codex-prompt` to `cbg compare-files` to write a deterministic Markdown prompt with the project title, comparison totals, regressed metrics only, metric directions, baseline and current values, change percentages, severity, and Regression Triage Advisor guidance.
-
-When regressions are detected, the prompt asks Codex to inspect the repository, identify likely causes, propose a minimal fix, add or update tests, and run project checks. It also includes the suggested checks `make lint`, `make format-check`, `make test`, and `make demo-ci`. If no regressions are detected, the prompt says no regression fix is needed and suggests reviewing benchmark stability instead.
-
-Example command:
-
-```bash
-cbg compare-files examples/baseline.json examples/current.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --codex-prompt reports/codex_fix_prompt.md
-```
-
-
-## Codex Handoff Pack
-
-The Codex Handoff Pack is the final Build Week workflow layer for teams that want to go beyond detecting a benchmark regression. It collects the comparison report, browser-friendly HTML report, Codex Fix Prompt, GitHub issue Markdown, and GitHub Actions guardrail workflow into one output directory so a developer can immediately open an issue, hand the investigation to Codex, and add CI protection against repeat regressions.
-
-Plain command using the bundled sample benchmark files and bundled directions config:
-
-```bash
-cbg handoff-pack
-```
-
-Custom benchmark files can omit `--directions-config` when all metrics share the fallback `--direction` behavior:
-
-```bash
-cbg handoff-pack --baseline base.json --current current.json --direction higher_is_worse --output-dir reports/handoff
-```
-
-Advanced command using per-metric directions from a config file for mixed metrics:
-
-```bash
-cbg handoff-pack --baseline examples/baseline.json --current examples/current.json --directions-config examples/directions.json --threshold 10 --direction higher_is_worse --output-dir reports/handoff
-```
-
-Generated files:
-
-- `reports/handoff/report.md` — Markdown benchmark comparison with Regression Triage Advisor notes.
-- `reports/handoff/report.html` — self-contained HTML report for browser review.
-- `reports/handoff/codex_fix_prompt.md` — ready-to-use Codex task for investigating and fixing regressions.
-- `reports/handoff/github_issue.md` — GitHub issue template with summary counts, regressed metrics, triage guidance, suggested Codex task, and quality checks.
-- `reports/handoff/benchmark_guardian_ci.yml` — deterministic GitHub Actions workflow for enforcing the benchmark guardrail.
-
-If regressions are found, `github_issue.md` includes the regressed metrics table and suggests running `make lint`, `make format-check`, `make test`, and `make demo-ci` before closing the issue. If no regressions are found, the pack is still generated and the issue Markdown states that no regression issue is needed while recommending continued benchmark stability monitoring. This keeps the workflow deterministic and useful for both failure and passing benchmark runs without calling external APIs.
-
-## Metric direction
-
-By default, Codex Benchmark Guardian treats higher current values as worse. This matches latency, runtime, and memory metrics: a regression is detected when the current value increases by at least the configured threshold percentage.
-
-Some metrics are better when they are higher, such as throughput or requests per second. For those, pass `--direction lower_is_worse`; a regression is detected when the current value decreases by at least the threshold percentage. For `compare-files` and `handoff-pack`, you can also pass `--directions-config` to configure direction per metric while keeping `--direction` as the fallback for metrics missing from the config. Plain `cbg handoff-pack` is a special sample-data convenience path: it uses `examples/baseline.json`, `examples/current.json`, and `examples/directions.json`. When you pass custom benchmark files without `--directions-config`, `handoff-pack` does not read the bundled directions config and instead relies on `--direction`.
-
-Supported directions are:
-
-- `higher_is_worse` — default; current value increases can regress.
-- `lower_is_worse` — current value decreases can regress.
-
-The actual direction used for each metric is shown in CLI output and in Markdown and HTML reports. When regressions are detected, the Regression Triage Advisor adds deterministic developer guidance for common metric patterns such as latency, runtime, memory, throughput, accuracy, recall, precision, and success rate.
+`--direction` provides the global fallback. `--directions-config` can override the direction for individual metrics in mixed benchmark files.
 
 Example `examples/directions.json`:
 
@@ -245,9 +357,13 @@ Example `examples/directions.json`:
 }
 ```
 
-## Example output
+The resolved direction for every metric is displayed in CLI output and generated reports.
 
-Single-metric comparison output:
+---
+
+## Example Diagnostics
+
+### Single-Metric Comparison
 
 ```text
 Metric: latency_ms
@@ -259,7 +375,9 @@ Direction: higher_is_worse
 Regression detected | Severity: high
 ```
 
-File comparison output:
+---
+
+### File Comparison
 
 ```text
 Compared 4 metrics
@@ -267,11 +385,9 @@ Regressions detected: 2
 Report written to: reports/report.md
 ```
 
-When `--html-report reports/report.html` is provided, the command also writes a self-contained HTML report and prints its path. When `--fail-on-regression` is provided and regressions are detected, the command prints a failure message after writing reports and exits non-zero.
+---
 
-## Report example
-
-The `compare-files` command writes a Markdown report like this. When `--html-report` is provided, it also writes a browser-friendly HTML report with the same summary and table data:
+### Benchmark Report
 
 ```markdown
 # Benchmark Comparison Report
@@ -285,93 +401,322 @@ Regressions detected: 2
 | memory_mb | higher_is_worse | 256 | 260 | 1.56% | 10.00% | OK | none |
 | runtime_s | higher_is_worse | 2.5 | 2.7 | 8.00% | 10.00% | OK | none |
 | throughput_rps | lower_is_worse | 1000 | 850 | -15.00% | 10.00% | Regression | medium |
-
-## Regression Triage
-
-### latency_ms
-
-- **Likely area:** Request path latency or dependency wait time
-- **Why it matters:** Higher latency slows developer and user workflows and can hide downstream bottlenecks.
-- **Suggested checks:**
-  - Inspect recent changes on the hot path for added I/O, sleeps, retries, or serialization work.
-  - Compare dependency timing, network calls, database queries, and cache hit rates against the baseline.
-  - Check benchmark host load and input size to rule out environmental noise.
-
-### throughput_rps
-
-- **Likely area:** Capacity, concurrency, or request processing rate
-- **Why it matters:** Lower throughput means the system handles less work with the same resources.
-- **Suggested checks:**
-  - Review concurrency limits, worker counts, queue behavior, and backpressure changes.
-  - Inspect CPU, lock contention, database pool usage, and external service rate limits.
-  - Verify the benchmark duration and request mix match the baseline run.
 ```
 
-## Built with Codex
+---
 
-Codex was used to help implement and refine the core developer workflow for this project, including:
+## Regression Triage Examples
 
-- JSON benchmark comparison between baseline and current files.
-- CLI integration for single-metric and file-based comparisons.
-- Regression report generation in Markdown and optional HTML.
-- Regression Triage Advisor notes for developer-facing remediation guidance.
-- Unit and CLI tests for benchmark loading, comparison, and regression detection.
-- Example benchmark inputs and generated report output.
-- GitHub Actions CI configuration for automated quality checks.
+### Latency Regression
 
-## Project structure
+The advisor may recommend checking:
+
+- Recent request-path changes
+- Added I/O, retries, sleeps, or serialization work
+- Network calls and dependency timing
+- Database queries and cache hit rates
+- Benchmark host load and environment noise
+
+### Throughput Regression
+
+The advisor may recommend checking:
+
+- Concurrency limits and worker counts
+- Queue behavior and backpressure
+- CPU utilization and lock contention
+- Database connection-pool usage
+- External service rate limits
+- Benchmark duration and request mix
+
+This turns a raw regression signal into a focused engineering investigation.
+
+---
+
+## Codex Fix Prompt Generator
+
+The Codex Fix Prompt Generator produces a deterministic Markdown task containing:
+
+- Project title
+- Comparison totals
+- Regressed metrics only
+- Metric directions
+- Baseline and current values
+- Change percentages
+- Regression severity
+- Triage guidance
+- Suggested quality checks
+
+When regressions are found, the prompt asks Codex to inspect the repository, identify likely causes, implement a minimal fix, add or update tests, and run:
+
+```bash
+make lint
+make format-check
+make test
+make demo-ci
+```
+
+When no regression is detected, the generated prompt records that no fix is needed and recommends continued benchmark stability review.
+
+---
+
+## CI Guardrail Generator
+
+Generate a benchmark guardrail workflow with:
+
+```bash
+cbg init-ci
+```
+
+Default output:
+
+```text
+.github/workflows/benchmark-guardian.yml
+```
+
+The generated workflow:
+
+- Runs on `push` and `pull_request`
+- Uses Ubuntu and Python 3.12
+- Installs the project with development dependencies
+- Executes benchmark comparison with `--fail-on-regression`
+- Generates Markdown, HTML, and Codex prompt artifacts
+- Fails when configured performance regressions are detected
+
+Customized example:
+
+```bash
+cbg init-ci \
+  --baseline examples/baseline.json \
+  --current examples/current_no_regression.json \
+  --directions-config examples/directions.json \
+  --threshold 10 \
+  --python-version 3.12 \
+  --output .github/workflows/benchmark-guardian.yml
+```
+
+---
+
+## Built with Codex and GPT-5.6
+
+I used **Codex with GPT-5.6** throughout the project to accelerate implementation, review edge cases, and improve engineering quality.
+
+Codex helped implement and refine:
+
+- JSON benchmark comparison
+- Multi-metric regression detection
+- Metric direction handling
+- Per-metric configuration
+- Markdown and HTML report generation
+- Regression Triage Advisor guidance
+- Codex Fix Prompt generation
+- CI regression failure behavior
+- GitHub Actions workflow generation
+- Streamlit dashboard workflows
+- Codex Handoff Pack generation
+- GitHub issue handoff generation
+- Makefile commands
+- Unit and CLI tests
+
+Codex reviews also helped identify important edge cases involving:
+
+- Passing and intentionally failing CI demos
+- Generated workflow output paths
+- Safe quoting of workflow command paths
+- Dashboard-generated CI YAML matching dashboard inputs
+- Mixed-metric direction handling
+- Relative, `./`, and absolute sample-file paths
+
+All suggestions were reviewed manually and verified with Ruff, Pytest, demo commands, and the working Streamlit dashboard.
+
+---
+
+## Installation and Testing
+
+Codex Benchmark Guardian is a Python-based developer tool with both a CLI and an interactive Streamlit dashboard.
+
+### Supported Platforms
+
+- Linux
+- macOS
+- Windows
+- GitHub Codespaces
+
+### Requirements
+
+- Python 3.12 or newer
+- pip
+- Git
+
+### Installation
+
+```bash
+git clone https://github.com/OmprakashSahani/codex-benchmark-guardian.git
+cd codex-benchmark-guardian
+pip install -e ".[dev]"
+```
+
+### Verify Installation
+
+```bash
+cbg version
+cbg about
+```
+
+### Run Quality Checks
+
+```bash
+make lint
+make format-check
+make test
+```
+
+Expected result:
+
+```text
+72 passed
+```
+
+---
+
+## Engineering Focus
+
+Codex Benchmark Guardian focuses on:
+
+- Performance regression detection
+- Developer-oriented benchmark diagnostics
+- Deterministic automation
+- Actionable Codex handoffs
+- CI performance enforcement
+- Reproducible JSON-based workflows
+- Low-friction integration with existing repositories
+
+---
+
+## Project Structure
 
 ```text
 .
 ├── .github/workflows/ci.yml      # GitHub Actions quality checks
-├── examples/                     # Example benchmark JSON files
+├── examples/                     # Example benchmark inputs
 │   ├── baseline.json
 │   ├── current.json
-│   └── current_no_regression.json
+│   ├── current_no_regression.json
+│   └── directions.json
 ├── app.py                        # Streamlit dashboard
-├── reports/                      # Generated Markdown report examples
-│   └── report.md
-├── src/codex_benchmark_guardian/ # CLI and benchmark comparison package
+├── reports/                      # Generated reports and handoff artifacts
+├── src/codex_benchmark_guardian/ # Core package and CLI
 │   ├── benchmarks.py
+│   ├── ci.py
 │   ├── cli.py
+│   ├── handoff.py
 │   ├── regression.py
 │   ├── report.py
 │   └── triage.py
 ├── tests/                        # Pytest suite
-├── pyproject.toml                # Package metadata and tool configuration
+├── pyproject.toml                # Package and tool configuration
 ├── requirements.txt              # Streamlit deployment dependencies
+├── Makefile                      # Development and demo commands
 └── README.md
 ```
 
+---
 
-## Makefile commands
-
-For a shorter local workflow, the repository includes a simple `Makefile` with common development and demo commands:
+## Makefile Commands
 
 ```bash
-make install        # Install the project with development dependencies
+make install        # Install development dependencies
 make lint           # Run Ruff lint checks
 make format-check   # Verify Ruff formatting
+make test           # Run the Pytest suite
 make dashboard      # Launch the Streamlit dashboard
-make test           # Run the pytest suite
-make demo           # Generate Markdown, HTML, and Codex prompt reports from the example benchmarks
-make demo-ci        # Run a passing CI-style smoke check with regression failure enabled
-make demo-handoff   # Generate the complete Codex Handoff Pack under reports/handoff
-make demo-init-ci   # Generate a demo benchmark guardrail workflow under reports/
-make demo-ci-fail   # Demonstrate expected CI failure handling for regressions
-make clean-reports  # Remove generated report and Codex prompt files
+make demo           # Generate report and Codex prompt demo artifacts
+make demo-ci        # Run a passing CI-style regression check
+make demo-handoff   # Generate the complete Codex Handoff Pack
+make demo-init-ci   # Generate a local CI workflow demo artifact
+make demo-ci-fail   # Demonstrate expected CI regression failure
+make clean-reports  # Remove generated report artifacts
 ```
 
-`make demo` compares `examples/baseline.json` and `examples/current.json` to show a regression report without failing the command. `make demo-ci` compares `examples/baseline.json` and `examples/current_no_regression.json` as a passing CI-style smoke check with `--fail-on-regression`. `make demo-handoff` writes the complete handoff bundle to `reports/handoff`; `make demo-init-ci` writes a demo copy to `reports/benchmark_guardian_ci.yml`; use plain `cbg init-ci` to install the workflow at `.github/workflows/benchmark-guardian.yml` for GitHub Actions. `make demo-ci-fail` intentionally compares the regressing `examples/current.json` file with `--fail-on-regression`, handles the expected non-zero exit gracefully, and prints a confirmation message. All demo targets apply per-metric directions from `examples/directions.json` and write `reports/report.md` plus `reports/report.html`; `make demo` also writes `reports/codex_fix_prompt.md`.
+- `make demo` demonstrates regression reporting without failing the command.
+- `make demo-ci` uses non-regressing sample data with `--fail-on-regression`.
+- `make demo-handoff` writes the complete handoff bundle to `reports/handoff/`.
+- `make demo-init-ci` writes a workflow copy to `reports/benchmark_guardian_ci.yml`.
+- `make demo-ci-fail` intentionally detects regressions and confirms expected CI failure handling.
 
-## Quality checks
+---
 
-Run the same checks used for local development and CI:
+## CI & Reliability
+
+Codex Benchmark Guardian includes:
+
+- Automated unit and CLI testing
+- Ruff lint validation
+- Ruff formatting validation
+- Deterministic sample benchmark inputs
+- Passing and intentionally failing CI demos
+- Benchmark regression enforcement
+- GitHub Actions quality checks
+
+Run the complete local verification workflow:
 
 ```bash
-ruff check .
-ruff format --check .
-pytest
+make lint
+make format-check
+make test
 ```
 
-For CI enforcement, add `--fail-on-regression` to `cbg compare-files` so the job fails when the comparison finds regressions.
+Latest verified result:
+
+```text
+72 passed
+```
+
+---
+
+## Technical Highlights
+
+- 72 verified automated tests
+- Single-metric and multi-metric comparison
+- Mixed metric-direction configuration
+- Regression severity classification
+- Regression Triage Advisor
+- Markdown and self-contained HTML reports
+- Codex Fix Prompt generation
+- GitHub issue handoff generation
+- Streamlit benchmark dashboard
+- Deterministic GitHub Actions guardrail generation
+- CI failure behavior with `--fail-on-regression`
+- Complete Codex Handoff Pack workflow
+- No external service or credential requirement
+
+---
+
+## Project Philosophy
+
+Codex Benchmark Guardian treats benchmark detection as the beginning of the engineering workflow, not the end.
+
+The project focuses on helping developers understand:
+
+- What changed
+- Whether the change is a regression
+- Why the regression matters
+- Where to investigate
+- How to hand the problem to Codex
+- How to communicate it through GitHub
+- How to prevent recurrence through CI
+
+The goal is to move from raw performance numbers to an actionable, reproducible, developer-friendly response.
+
+---
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).
+
+---
+
+<div align="center">
+
+*Omprakash Sahani — ML Systems Engineer · Software Engineer · Distributed Systems*
+
+</div>
