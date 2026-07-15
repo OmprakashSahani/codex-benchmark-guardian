@@ -15,11 +15,8 @@ BenchmarkMetrics = dict[str, float]
 MetricDirections = dict[str, MetricDirection]
 
 
-def load_benchmark_file(path: Path) -> BenchmarkMetrics:
-    """Load numeric benchmark metrics from a JSON file."""
-    with path.open(encoding="utf-8") as benchmark_file:
-        data: Any = json.load(benchmark_file)
-
+def parse_benchmark_metrics(data: Any) -> BenchmarkMetrics:
+    """Parse numeric benchmark metrics from decoded JSON data."""
     if not isinstance(data, dict):
         raise ValueError("benchmark JSON must contain an object of metric names to numeric values")
 
@@ -34,11 +31,8 @@ def load_benchmark_file(path: Path) -> BenchmarkMetrics:
     return metrics
 
 
-def load_directions_config(path: Path) -> MetricDirections:
-    """Load per-metric direction settings from a JSON file."""
-    with path.open(encoding="utf-8") as directions_file:
-        data: Any = json.load(directions_file)
-
+def parse_directions_config(data: Any) -> MetricDirections:
+    """Parse per-metric direction settings from decoded JSON data."""
     if not isinstance(data, dict):
         raise ValueError("directions config JSON must contain an object")
 
@@ -58,6 +52,22 @@ def load_directions_config(path: Path) -> MetricDirections:
             ) from exc
 
     return directions
+
+
+def load_benchmark_file(path: Path) -> BenchmarkMetrics:
+    """Load numeric benchmark metrics from a JSON file."""
+    with path.open(encoding="utf-8") as benchmark_file:
+        data: Any = json.load(benchmark_file)
+
+    return parse_benchmark_metrics(data)
+
+
+def load_directions_config(path: Path) -> MetricDirections:
+    """Load per-metric direction settings from a JSON file."""
+    with path.open(encoding="utf-8") as directions_file:
+        data: Any = json.load(directions_file)
+
+    return parse_directions_config(data)
 
 
 def compare_benchmark_metrics(

@@ -1,4 +1,4 @@
-.PHONY: install test lint format-check demo demo-ci demo-ci-fail demo-init-ci clean-reports
+.PHONY: install test lint format-check dashboard demo demo-ci demo-ci-fail demo-init-ci clean-reports
 
 install:
 	pip install -e ".[dev]"
@@ -11,6 +11,9 @@ lint:
 
 format-check:
 	ruff format --check .
+
+dashboard:
+	streamlit run app.py
 
 demo:
 	cbg compare-files examples/baseline.json examples/current.json --threshold 10 --directions-config examples/directions.json --report reports/report.md --html-report reports/report.html --codex-prompt reports/codex_fix_prompt.md
