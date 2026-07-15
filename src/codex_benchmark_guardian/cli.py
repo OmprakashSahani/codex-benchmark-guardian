@@ -20,6 +20,7 @@ from codex_benchmark_guardian.ci import (
     DEFAULT_THRESHOLD,
     write_github_actions_workflow,
 )
+from codex_benchmark_guardian.handoff import generate_handoff_pack
 from codex_benchmark_guardian.regression import MetricDirection, detect_regression
 from codex_benchmark_guardian.report import (
     generate_codex_fix_prompt,
@@ -160,6 +161,63 @@ def init_ci(
         python_version=python_version,
     )
     console.print(f"CI guardrail workflow written to: {output_path}")
+
+
+@app.command("handoff-pack")
+def handoff_pack(
+    baseline_path: Annotated[
+        Path,
+        typer.Option("--baseline", help="Path to the baseline benchmark JSON file."),
+    ] = Path("examples/baseline.json"),
+    current_path: Annotated[
+        Path,
+        typer.Option("--current", help="Path to the current benchmark JSON file."),
+    ] = Path("examples/current.json"),
+    directions_config_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--directions-config",
+            help="Optional JSON file mapping metric names to directions.",
+        ),
+    ] = Path("examples/directions.json"),
+    threshold: Annotated[
+        float,
+        typer.Option("--threshold", "-t", help="Regression threshold percentage."),
+    ] = 10.0,
+    direction: Annotated[
+        MetricDirection,
+        typer.Option(
+            "--direction",
+            help="Fallback metric direction for metrics not in --directions-config.",
+        ),
+    ] = MetricDirection.HIGHER_IS_WORSE,
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output-dir",
+            help="Directory where the Codex Handoff Pack should be written.",
+        ),
+    ] = Path("reports/handoff"),
+) -> None:
+    """Generate a complete Codex developer handoff pack from benchmarks."""
+    try:
+        paths = generate_handoff_pack(
+            baseline_path=baseline_path,
+            current_path=current_path,
+            directions_config_path=directions_config_path,
+            threshold=threshold,
+            direction=direction,
+            output_dir=output_dir,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    console.print(f"Codex Handoff Pack written to: {output_dir}")
+    console.print(f"Markdown report written to: {paths.report}")
+    console.print(f"HTML report written to: {paths.html_report}")
+    console.print(f"Codex fix prompt written to: {paths.codex_fix_prompt}")
+    console.print(f"GitHub issue template written to: {paths.github_issue}")
+    console.print(f"CI guardrail workflow written to: {paths.ci_workflow}")
 
 
 @app.command("compare-files")

@@ -143,6 +143,143 @@ def generate_codex_fix_prompt(results: Sequence[RegressionResult]) -> str:
     return "\n".join(lines)
 
 
+def generate_github_issue(results: Sequence[RegressionResult]) -> str:
+    """Generate a Markdown GitHub issue template for benchmark handoff."""
+    regression_results = [result for result in results if result.is_regression]
+    regression_count = len(regression_results)
+    lines = [
+        "# Benchmark regression handoff",
+        "",
+        "## Title",
+        "",
+    ]
+
+    if regression_results:
+        lines.append(
+            f"Investigate {regression_count} benchmark regression"
+            f"{'' if regression_count == 1 else 's'}"
+        )
+        lines.extend(
+            [
+                "",
+                "## Summary",
+                "",
+                (
+                    "Codex Benchmark Guardian detected benchmark regressions that need "
+                    "owner review, issue tracking, Codex-assisted fixing, and CI guardrail "
+                    "follow-up."
+                ),
+                "",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "No benchmark regression issue needed",
+                "",
+                "## Summary",
+                "",
+                (
+                    "No benchmark regressions were detected. No regression issue is needed; "
+                    "continue monitoring benchmark stability, thresholds, and measurement "
+                    "noise over time."
+                ),
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            f"- Compared metrics count: {len(results)}",
+            f"- Regression count: {regression_count}",
+            "",
+        ]
+    )
+
+    if regression_results:
+        lines.extend(
+            [
+                "## Regressed Metrics",
+                "",
+                "| Metric | Direction | Baseline | Current | Change | Threshold | Severity |",
+                "| --- | --- | ---: | ---: | ---: | ---: | --- |",
+            ]
+        )
+        for result in regression_results:
+            lines.append(
+                "| "
+                f"{result.metric_name} | "
+                f"{result.direction.value} | "
+                f"{result.baseline_value:g} | "
+                f"{result.current_value:g} | "
+                f"{result.change_percent:.2f}% | "
+                f"{result.threshold_percent:.2f}% | "
+                f"{result.severity} |"
+            )
+
+        triage_notes = generate_triage_notes(results)
+        if triage_notes:
+            lines.extend(["", "## Triage Guidance", ""])
+            for note in triage_notes:
+                lines.extend(
+                    [
+                        f"### {note.metric_name}",
+                        "",
+                        f"- **Likely area:** {note.likely_area}",
+                        f"- **Why it matters:** {note.why_it_matters}",
+                        "- **Suggested checks:**",
+                    ]
+                )
+                lines.extend(f"  - {check}" for check in note.suggested_checks)
+                lines.append("")
+
+        lines.extend(
+            [
+                "## Suggested Codex Task",
+                "",
+                (
+                    "Use `codex_fix_prompt.md` from the handoff pack to ask Codex to "
+                    "investigate the regressed metrics, identify likely causes, implement a "
+                    "minimal fix, add or update tests, and verify the benchmark guardrail."
+                ),
+                "",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "## Triage Guidance",
+                "",
+                (
+                    "No triage is required because every compared metric stayed within the "
+                    "configured threshold. Keep collecting benchmark history and review "
+                    "thresholds if the metrics become noisy."
+                ),
+                "",
+                "## Suggested Codex Task",
+                "",
+                (
+                    "No fix task is needed. Optionally ask Codex to review benchmark "
+                    "coverage, threshold settings, or CI guardrail placement."
+                ),
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "## Suggested Quality Checks",
+            "",
+            "- `make lint`",
+            "- `make format-check`",
+            "- `make test`",
+            "- `make demo-ci`",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def generate_html_report(results: Sequence[RegressionResult]) -> str:
     """Generate a self-contained HTML benchmark comparison report."""
     regression_count = sum(result.is_regression for result in results)

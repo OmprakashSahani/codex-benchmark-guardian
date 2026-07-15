@@ -152,3 +152,64 @@ def test_generate_codex_fix_prompt_includes_quality_checks() -> None:
     assert "`make format-check`" in prompt
     assert "`make test`" in prompt
     assert "`make demo-ci`" in prompt
+
+
+def test_generate_github_issue_with_regressions() -> None:
+    from codex_benchmark_guardian.report import generate_github_issue
+
+    results = [
+        RegressionResult(
+            metric_name="latency_ms",
+            baseline_value=100.0,
+            current_value=125.0,
+            change_percent=25.0,
+            threshold_percent=10.0,
+            is_regression=True,
+            severity="high",
+        )
+    ]
+
+    issue = generate_github_issue(results)
+
+    assert "# Benchmark regression handoff" in issue
+    assert "Investigate 1 benchmark regression" in issue
+    assert "Compared metrics count: 1" in issue
+    assert "Regression count: 1" in issue
+    assert "| latency_ms | higher_is_worse | 100 | 125 | 25.00% | 10.00% | high |" in issue
+    assert "Request path latency or dependency wait time" in issue
+    assert "Suggested Codex Task" in issue
+
+
+def test_generate_github_issue_without_regressions() -> None:
+    from codex_benchmark_guardian.report import generate_github_issue
+
+    results = [
+        RegressionResult(
+            metric_name="latency_ms",
+            baseline_value=100.0,
+            current_value=105.0,
+            change_percent=5.0,
+            threshold_percent=10.0,
+            is_regression=False,
+            severity="none",
+        )
+    ]
+
+    issue = generate_github_issue(results)
+
+    assert "No benchmark regression issue needed" in issue
+    assert "No regression issue is needed" in issue
+    assert "monitoring benchmark stability" in issue
+    assert "Regression count: 0" in issue
+    assert "| latency_ms |" not in issue
+
+
+def test_generate_github_issue_includes_quality_checks() -> None:
+    from codex_benchmark_guardian.report import generate_github_issue
+
+    issue = generate_github_issue([])
+
+    assert "`make lint`" in issue
+    assert "`make format-check`" in issue
+    assert "`make test`" in issue
+    assert "`make demo-ci`" in issue
