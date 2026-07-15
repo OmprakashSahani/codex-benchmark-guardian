@@ -119,6 +119,8 @@ Codex Benchmark Guardian also includes an interactive Streamlit dashboard for ju
 
 After analysis runs, the dashboard shows total compared metrics, regressions detected, a metric status table, Regression Triage Advisor output for regressed metrics, and expandable generated artifacts for the Codex Fix Prompt and CI Guardrail workflow YAML. It also provides download buttons for the Markdown report, HTML report, Codex fix prompt, and GitHub Actions workflow YAML.
 
+The generated CI Guardrail workflow follows the dashboard input source. Built-in sample data generates a ready workflow for the repository sample files at `examples/baseline.json`, `examples/current.json`, and `examples/directions.json`, using the threshold selected in the dashboard. Uploaded files are analyzed in-memory by Streamlit; before CI can use the downloaded workflow, save those JSON files in your repository at the placeholder workflow paths (`benchmarks/baseline.json`, `benchmarks/current.json`, and `benchmarks/directions.json`) or edit the workflow paths to match your repository. If you do not provide a directions config, the workflow note explains that per-metric directions require saving a directions file, otherwise the CLI uses the fallback/global direction behavior.
+
 Run locally with:
 
 ```bash

@@ -10,7 +10,10 @@ from codex_benchmark_guardian.benchmarks import (
     parse_benchmark_metrics,
     parse_directions_config,
 )
-from codex_benchmark_guardian.ci import generate_github_actions_workflow
+from codex_benchmark_guardian.ci import (
+    generate_github_actions_workflow,
+    select_dashboard_workflow_context,
+)
 from codex_benchmark_guardian.regression import MetricDirection
 from codex_benchmark_guardian.report import (
     generate_codex_fix_prompt,
@@ -137,7 +140,17 @@ if run_analysis:
         markdown_report = generate_markdown_report(results)
         html_report = generate_html_report(results)
         codex_prompt = generate_codex_fix_prompt(results)
-        ci_workflow = generate_github_actions_workflow(threshold=threshold)
+        workflow_context = select_dashboard_workflow_context(
+            use_sample_data=use_sample_data,
+            has_directions_upload=directions_upload is not None,
+        )
+        ci_workflow = generate_github_actions_workflow(
+            baseline_path=workflow_context.baseline_path,
+            current_path=workflow_context.current_path,
+            directions_config_path=workflow_context.directions_config_path,
+            threshold=threshold,
+            direction=MetricDirection(fallback_direction),
+        )
 
         metric_col, regression_col = st.columns(2)
         metric_col.metric("Total compared metrics", len(results))
@@ -164,6 +177,7 @@ if run_analysis:
             st.code(codex_prompt, language="markdown")
 
         with st.expander("Generated CI Guardrail Workflow YAML"):
+            st.info(workflow_context.note)
             st.code(ci_workflow, language="yaml")
 
         st.subheader("Downloads")
