@@ -460,3 +460,70 @@ def test_handoff_pack_command_creates_all_expected_files(tmp_path) -> None:
     assert "`make format-check`" in issue
     assert "`make test`" in issue
     assert "`make demo-ci`" in issue
+
+
+def test_handoff_pack_command_works_without_directions_config(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    baseline_path = tmp_path / "base.json"
+    current_path = tmp_path / "current.json"
+    output_dir = tmp_path / "handoff"
+    baseline_path.write_text(json.dumps({"latency_ms": 100.0}), encoding="utf-8")
+    current_path.write_text(json.dumps({"latency_ms": 125.0}), encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "handoff-pack",
+            "--baseline",
+            str(baseline_path),
+            "--current",
+            str(current_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Codex Handoff Pack written to:" in result.output
+    assert (output_dir / "report.md").exists()
+    workflow = (output_dir / "benchmark_guardian_ci.yml").read_text(encoding="utf-8")
+    assert "--directions-config" not in workflow
+
+
+def test_handoff_pack_command_without_directions_config_uses_fallback_direction(tmp_path) -> None:
+    baseline_path = tmp_path / "base.json"
+    current_path = tmp_path / "current.json"
+    output_dir = tmp_path / "handoff"
+    baseline_path.write_text(json.dumps({"throughput_rps": 1000.0}), encoding="utf-8")
+    current_path.write_text(json.dumps({"throughput_rps": 850.0}), encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "handoff-pack",
+            "--baseline",
+            str(baseline_path),
+            "--current",
+            str(current_path),
+            "--direction",
+            "lower_is_worse",
+            "--threshold",
+            "10",
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    report = (output_dir / "report.md").read_text(encoding="utf-8")
+    assert (
+        "| throughput_rps | lower_is_worse | 1000 | 850 | -15.00% | 10.00% | Regression | medium |"
+        in report
+    )
+
+
+def test_demo_handoff_explicitly_passes_directions_config() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    assert "cbg handoff-pack" in makefile
+    assert "--directions-config examples/directions.json" in makefile

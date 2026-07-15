@@ -179,7 +179,7 @@ def handoff_pack(
             "--directions-config",
             help="Optional JSON file mapping metric names to directions.",
         ),
-    ] = Path("examples/directions.json"),
+    ] = None,
     threshold: Annotated[
         float,
         typer.Option("--threshold", "-t", help="Regression threshold percentage."),
