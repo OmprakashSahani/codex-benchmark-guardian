@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from codex_benchmark_guardian.cli import app
@@ -408,6 +409,104 @@ def test_init_ci_command_uses_default_github_actions_output(tmp_path, monkeypatc
     assert default_output.exists()
 
 
+@pytest.mark.parametrize(
+    ("baseline_path", "current_path"),
+    [
+        ("examples/baseline.json", "examples/current.json"),
+        ("./examples/baseline.json", "./examples/current.json"),
+        (
+            str(Path("examples/baseline.json").resolve()),
+            str(Path("examples/current.json").resolve()),
+        ),
+    ],
+)
+def test_handoff_pack_command_bundled_sample_paths_use_bundled_directions_config(
+    tmp_path,
+    baseline_path,
+    current_path,
+) -> None:
+    output_dir = tmp_path / "handoff"
+
+    result = runner.invoke(
+        app,
+        [
+            "handoff-pack",
+            "--baseline",
+            baseline_path,
+            "--current",
+            current_path,
+            "--threshold",
+            "10",
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "FileNotFoundError" not in result.output
+    report = (output_dir / "report.md").read_text(encoding="utf-8")
+    assert (
+        "| throughput_rps | lower_is_worse | 1000 | 850 | -15.00% | 10.00% | Regression | medium |"
+        in report
+    )
+    workflow = (output_dir / "benchmark_guardian_ci.yml").read_text(encoding="utf-8")
+    assert "--directions-config 'examples/directions.json'" in workflow
+
+
+def test_handoff_pack_command_defaults_to_bundled_directions_config(tmp_path) -> None:
+    output_dir = tmp_path / "handoff"
+
+    result = runner.invoke(
+        app,
+        [
+            "handoff-pack",
+            "--threshold",
+            "10",
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    report = (output_dir / "report.md").read_text(encoding="utf-8")
+    assert (
+        "| throughput_rps | lower_is_worse | 1000 | 850 | -15.00% | 10.00% | Regression | medium |"
+        in report
+    )
+
+
+def test_handoff_pack_command_explicit_directions_config_overrides_default(
+    tmp_path,
+) -> None:
+    directions_path = tmp_path / "directions.json"
+    output_dir = tmp_path / "handoff"
+    directions_path.write_text(
+        json.dumps({"throughput_rps": "higher_is_worse"}),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "handoff-pack",
+            "--directions-config",
+            str(directions_path),
+            "--threshold",
+            "10",
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    report = (output_dir / "report.md").read_text(encoding="utf-8")
+    assert (
+        "| throughput_rps | higher_is_worse | 1000 | 850 | -15.00% | 10.00% | OK | none |" in report
+    )
+    workflow = (output_dir / "benchmark_guardian_ci.yml").read_text(encoding="utf-8")
+    assert f"--directions-config '{directions_path}'" in workflow
+
+
 def test_handoff_pack_command_creates_all_expected_files(tmp_path) -> None:
     baseline_path = tmp_path / "baseline.json"
     current_path = tmp_path / "current.json"
@@ -490,7 +589,42 @@ def test_handoff_pack_command_works_without_directions_config(tmp_path, monkeypa
     assert "--directions-config" not in workflow
 
 
-def test_handoff_pack_command_without_directions_config_uses_fallback_direction(tmp_path) -> None:
+def test_handoff_pack_command_custom_inputs_do_not_trigger_bundled_directions_config(
+    tmp_path,
+) -> None:
+    baseline_path = tmp_path / "baseline.json"
+    current_path = tmp_path / "current.json"
+    output_dir = tmp_path / "handoff"
+    baseline_path.write_text(json.dumps({"throughput_rps": 1000.0}), encoding="utf-8")
+    current_path.write_text(json.dumps({"throughput_rps": 850.0}), encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "handoff-pack",
+            "--baseline",
+            str(baseline_path),
+            "--current",
+            str(current_path),
+            "--threshold",
+            "10",
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    report = (output_dir / "report.md").read_text(encoding="utf-8")
+    assert (
+        "| throughput_rps | higher_is_worse | 1000 | 850 | -15.00% | 10.00% | OK | none |" in report
+    )
+    workflow = (output_dir / "benchmark_guardian_ci.yml").read_text(encoding="utf-8")
+    assert "--directions-config" not in workflow
+
+
+def test_handoff_pack_command_custom_inputs_without_directions_config_use_fallback_direction(
+    tmp_path,
+) -> None:
     baseline_path = tmp_path / "base.json"
     current_path = tmp_path / "current.json"
     output_dir = tmp_path / "handoff"
@@ -515,6 +649,7 @@ def test_handoff_pack_command_without_directions_config_uses_fallback_direction(
     )
 
     assert result.exit_code == 0
+    assert "FileNotFoundError" not in result.output
     report = (output_dir / "report.md").read_text(encoding="utf-8")
     assert (
         "| throughput_rps | lower_is_worse | 1000 | 850 | -15.00% | 10.00% | Regression | medium |"
