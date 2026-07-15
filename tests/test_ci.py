@@ -3,7 +3,9 @@ from pathlib import Path
 from codex_benchmark_guardian.ci import (
     DEFAULT_OUTPUT_PATH,
     generate_github_actions_workflow,
+    select_dashboard_workflow_context,
 )
+from codex_benchmark_guardian.regression import MetricDirection
 
 
 def test_default_output_path_is_github_actions_workflow() -> None:
@@ -71,3 +73,44 @@ def test_generated_workflow_handles_custom_paths_with_spaces() -> None:
     assert "'benchmark data/baseline.json'" in workflow
     assert "'benchmark data/current.json'" in workflow
     assert "--directions-config 'benchmark data/directions.json'" in workflow
+
+
+def test_dashboard_sample_workflow_context_uses_regressing_examples() -> None:
+    context = select_dashboard_workflow_context(
+        use_sample_data=True,
+        has_directions_upload=False,
+    )
+
+    assert context.baseline_path == Path("examples/baseline.json")
+    assert context.current_path == Path("examples/current.json")
+    assert context.directions_config_path == Path("examples/directions.json")
+    assert "matches this dashboard analysis" in context.note
+
+
+def test_dashboard_upload_workflow_context_uses_placeholder_repo_paths() -> None:
+    context = select_dashboard_workflow_context(
+        use_sample_data=False,
+        has_directions_upload=True,
+    )
+
+    assert context.baseline_path == Path("benchmarks/baseline.json")
+    assert context.current_path == Path("benchmarks/current.json")
+    assert context.directions_config_path == Path("benchmarks/directions.json")
+    assert "Uploaded files are analyzed in-memory" in context.note
+    assert "No directions config was uploaded" not in context.note
+
+
+def test_dashboard_upload_workflow_context_notes_missing_directions_upload() -> None:
+    context = select_dashboard_workflow_context(
+        use_sample_data=False,
+        has_directions_upload=False,
+    )
+
+    assert "No directions config was uploaded" in context.note
+    assert "fallback/global direction behavior" in context.note
+
+
+def test_generated_workflow_uses_custom_direction() -> None:
+    workflow = generate_github_actions_workflow(direction=MetricDirection.LOWER_IS_WORSE)
+
+    assert "--direction lower_is_worse" in workflow
