@@ -17,6 +17,7 @@ from codex_benchmark_guardian.ci import (
 from codex_benchmark_guardian.regression import MetricDirection
 from codex_benchmark_guardian.report import (
     generate_codex_fix_prompt,
+    generate_github_issue,
     generate_html_report,
     generate_markdown_report,
 )
@@ -144,6 +145,7 @@ if run_analysis:
             use_sample_data=use_sample_data,
             has_directions_upload=directions_upload is not None,
         )
+        github_issue = generate_github_issue(results)
         ci_workflow = generate_github_actions_workflow(
             baseline_path=workflow_context.baseline_path,
             current_path=workflow_context.current_path,
@@ -176,12 +178,26 @@ if run_analysis:
         with st.expander("Generated Codex Fix Prompt"):
             st.code(codex_prompt, language="markdown")
 
+        with st.expander("Codex Handoff Pack"):
+            st.write(
+                "The report, Codex prompt, GitHub issue template, and CI workflow form "
+                "a complete handoff workflow from regression detection to fixing and "
+                "guardrail setup."
+            )
+            st.code(github_issue, language="markdown")
+            st.download_button(
+                "Download github_issue.md",
+                github_issue,
+                file_name="github_issue.md",
+                mime="text/markdown",
+            )
+
         with st.expander("Generated CI Guardrail Workflow YAML"):
             st.info(workflow_context.note)
             st.code(ci_workflow, language="yaml")
 
         st.subheader("Downloads")
-        download_cols = st.columns(4)
+        download_cols = st.columns(5)
         download_cols[0].download_button(
             "Markdown report",
             markdown_report,
@@ -201,6 +217,12 @@ if run_analysis:
             mime="text/markdown",
         )
         download_cols[3].download_button(
+            "GitHub issue",
+            github_issue,
+            file_name="github_issue.md",
+            mime="text/markdown",
+        )
+        download_cols[4].download_button(
             "CI guardrail YAML",
             ci_workflow,
             file_name="benchmark-guardian.yml",

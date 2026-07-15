@@ -406,3 +406,57 @@ def test_init_ci_command_uses_default_github_actions_output(tmp_path, monkeypatc
     )
     default_output = Path(".github/workflows/benchmark-guardian.yml")
     assert default_output.exists()
+
+
+def test_handoff_pack_command_creates_all_expected_files(tmp_path) -> None:
+    baseline_path = tmp_path / "baseline.json"
+    current_path = tmp_path / "current.json"
+    directions_path = tmp_path / "directions.json"
+    output_dir = tmp_path / "reports" / "handoff"
+    baseline_path.write_text(
+        json.dumps({"latency_ms": 100.0, "throughput_rps": 1000.0}),
+        encoding="utf-8",
+    )
+    current_path.write_text(
+        json.dumps({"latency_ms": 125.0, "throughput_rps": 850.0}),
+        encoding="utf-8",
+    )
+    directions_path.write_text(
+        json.dumps({"throughput_rps": "lower_is_worse"}),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "handoff-pack",
+            "--baseline",
+            str(baseline_path),
+            "--current",
+            str(current_path),
+            "--directions-config",
+            str(directions_path),
+            "--threshold",
+            "10",
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Codex Handoff Pack written to:" in result.output
+    expected_files = {
+        "report.md",
+        "report.html",
+        "codex_fix_prompt.md",
+        "github_issue.md",
+        "benchmark_guardian_ci.yml",
+    }
+    assert {path.name for path in output_dir.iterdir()} == expected_files
+    issue = (output_dir / "github_issue.md").read_text(encoding="utf-8")
+    assert "| latency_ms | higher_is_worse | 100 | 125 | 25.00% | 10.00% | high |" in issue
+    assert "| throughput_rps | lower_is_worse | 1000 | 850 | -15.00% | 10.00% | medium |" in issue
+    assert "`make lint`" in issue
+    assert "`make format-check`" in issue
+    assert "`make test`" in issue
+    assert "`make demo-ci`" in issue
