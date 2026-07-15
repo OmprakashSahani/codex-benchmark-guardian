@@ -29,6 +29,7 @@ The project focuses on:
 - Markdown report generation with summary counts, per-metric status, and regression triage guidance.
 - Optional HTML report generation with summary counts, per-metric status tables, and regression triage guidance.
 - Optional Codex fix prompt generation for Build Week workflows with regressed metrics, triage guidance, and suggested quality checks.
+- Interactive Streamlit dashboard for judges and developers who want to run regression analysis without terminal commands.
 - CI-friendly failure mode for benchmark regressions with `--fail-on-regression`.
 - `cbg init-ci` command for generating a deterministic benchmark guardrail workflow.
 - Example benchmark files under `examples/`.
@@ -111,6 +112,26 @@ cbg init-ci
 The generated workflow writes to `.github/workflows/benchmark-guardian.yml` by default, runs on `push` and `pull_request`, uses Ubuntu with Python 3.12, installs the project with `pip install -e ".[dev]"`, and runs `cbg compare-files` against `examples/baseline.json`, `examples/current_no_regression.json`, and `examples/directions.json`. It writes `reports/report.md`, `reports/report.html`, and `reports/codex_fix_prompt.md`, then fails the workflow if a regression is detected.
 
 Customize the generated workflow inputs with `--baseline`, `--current`, `--directions-config`, `--threshold`, `--python-version`, and `--output` when your benchmark file paths, runtime, or output location differ from the defaults.
+
+## Streamlit Dashboard
+
+Codex Benchmark Guardian also includes an interactive Streamlit dashboard for judges and developers who prefer a browser workflow. The dashboard lets you choose a regression threshold, use built-in sample data, upload baseline and current benchmark JSON files, optionally upload a per-metric directions config, and run the same benchmark comparison logic used by the CLI.
+
+After analysis runs, the dashboard shows total compared metrics, regressions detected, a metric status table, Regression Triage Advisor output for regressed metrics, and expandable generated artifacts for the Codex Fix Prompt and CI Guardrail workflow YAML. It also provides download buttons for the Markdown report, HTML report, Codex fix prompt, and GitHub Actions workflow YAML.
+
+Run locally with:
+
+```bash
+streamlit run app.py
+```
+
+You can also use the Makefile shortcut:
+
+```bash
+make dashboard
+```
+
+For Streamlit Community Cloud deployment, point the app entry file at `app.py` and use `requirements.txt` so the deployment installs Codex Benchmark Guardian and Streamlit dependencies.
 
 ## CI Guardrail Generator
 
@@ -249,6 +270,7 @@ Codex was used to help implement and refine the core developer workflow for this
 │   ├── baseline.json
 │   ├── current.json
 │   └── current_no_regression.json
+├── app.py                        # Streamlit dashboard
 ├── reports/                      # Generated Markdown report examples
 │   └── report.md
 ├── src/codex_benchmark_guardian/ # CLI and benchmark comparison package
@@ -259,6 +281,7 @@ Codex was used to help implement and refine the core developer workflow for this
 │   └── triage.py
 ├── tests/                        # Pytest suite
 ├── pyproject.toml                # Package metadata and tool configuration
+├── requirements.txt              # Streamlit deployment dependencies
 └── README.md
 ```
 
@@ -271,6 +294,7 @@ For a shorter local workflow, the repository includes a simple `Makefile` with c
 make install        # Install the project with development dependencies
 make lint           # Run Ruff lint checks
 make format-check   # Verify Ruff formatting
+make dashboard      # Launch the Streamlit dashboard
 make test           # Run the pytest suite
 make demo           # Generate Markdown, HTML, and Codex prompt reports from the example benchmarks
 make demo-ci        # Run a passing CI-style smoke check with regression failure enabled

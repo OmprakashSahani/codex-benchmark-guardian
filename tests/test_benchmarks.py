@@ -8,6 +8,8 @@ from codex_benchmark_guardian.benchmarks import (
     compare_benchmark_metrics,
     load_benchmark_file,
     load_directions_config,
+    parse_benchmark_metrics,
+    parse_directions_config,
 )
 from codex_benchmark_guardian.regression import MetricDirection
 
@@ -134,6 +136,33 @@ def test_load_directions_config_loads_metric_directions(tmp_path) -> None:
     )
 
     assert load_directions_config(directions_path) == {
+        "latency_ms": MetricDirection.HIGHER_IS_WORSE,
+        "throughput_rps": MetricDirection.LOWER_IS_WORSE,
+    }
+
+
+def test_parse_benchmark_metrics_filters_non_numeric_values() -> None:
+    metrics = parse_benchmark_metrics(
+        {
+            "latency_ms": 100,
+            "memory_mb": 256.5,
+            "passed": True,
+            "label": "main",
+        }
+    )
+
+    assert metrics == {"latency_ms": 100.0, "memory_mb": 256.5}
+
+
+def test_parse_directions_config_parses_metric_directions() -> None:
+    directions = parse_directions_config(
+        {
+            "latency_ms": "higher_is_worse",
+            "throughput_rps": "lower_is_worse",
+        }
+    )
+
+    assert directions == {
         "latency_ms": MetricDirection.HIGHER_IS_WORSE,
         "throughput_rps": MetricDirection.LOWER_IS_WORSE,
     }
