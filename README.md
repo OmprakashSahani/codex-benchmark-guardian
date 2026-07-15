@@ -98,7 +98,13 @@ cbg compare-files examples/baseline.json examples/current.json --threshold 10 --
 ```
 
 
-Generate a complete Codex Handoff Pack for moving from benchmark regression detection to issue creation, Codex-assisted fixing, and CI guardrail setup:
+Generate a complete Codex Handoff Pack for moving from benchmark regression detection to issue creation, Codex-assisted fixing, and CI guardrail setup. The simplest form uses the global fallback metric direction for all metrics:
+
+```bash
+cbg handoff-pack --baseline base.json --current current.json --output-dir reports/handoff
+```
+
+For mixed benchmark files, pass a directions config explicitly:
 
 ```bash
 cbg handoff-pack --baseline examples/baseline.json --current examples/current.json --directions-config examples/directions.json --threshold 10 --direction higher_is_worse --output-dir reports/handoff
@@ -181,7 +187,13 @@ cbg compare-files examples/baseline.json examples/current.json --threshold 10 --
 
 The Codex Handoff Pack is the final Build Week workflow layer for teams that want to go beyond detecting a benchmark regression. It collects the comparison report, browser-friendly HTML report, Codex Fix Prompt, GitHub issue Markdown, and GitHub Actions guardrail workflow into one output directory so a developer can immediately open an issue, hand the investigation to Codex, and add CI protection against repeat regressions.
 
-Example command:
+Simple command using the global fallback metric direction for all metrics:
+
+```bash
+cbg handoff-pack --baseline base.json --current current.json --output-dir reports/handoff
+```
+
+Advanced command using per-metric directions from a config file:
 
 ```bash
 cbg handoff-pack --baseline examples/baseline.json --current examples/current.json --directions-config examples/directions.json --threshold 10 --direction higher_is_worse --output-dir reports/handoff
