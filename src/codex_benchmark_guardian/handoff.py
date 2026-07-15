@@ -22,6 +22,10 @@ DEFAULT_CURRENT_PATH = Path("examples/current.json")
 DEFAULT_DIRECTIONS_CONFIG_PATH = Path("examples/directions.json")
 
 
+def _normalized_path(path: Path) -> Path:
+    return path.expanduser().resolve(strict=False)
+
+
 def resolve_handoff_directions_config_path(
     *,
     baseline_path: Path,
@@ -31,7 +35,9 @@ def resolve_handoff_directions_config_path(
     """Return the directions config path that handoff-pack should use."""
     if directions_config_path is not None:
         return directions_config_path
-    if baseline_path == DEFAULT_BASELINE_PATH and current_path == DEFAULT_CURRENT_PATH:
+    if _normalized_path(baseline_path) == _normalized_path(
+        DEFAULT_BASELINE_PATH
+    ) and _normalized_path(current_path) == _normalized_path(DEFAULT_CURRENT_PATH):
         return DEFAULT_DIRECTIONS_CONFIG_PATH
     return None
 
