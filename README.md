@@ -98,13 +98,19 @@ cbg compare-files examples/baseline.json examples/current.json --threshold 10 --
 ```
 
 
-Generate a complete Codex Handoff Pack for moving from benchmark regression detection to issue creation, Codex-assisted fixing, and CI guardrail setup. The simplest form uses the global fallback metric direction for all metrics:
+Generate a complete Codex Handoff Pack for moving from benchmark regression detection to issue creation, Codex-assisted fixing, and CI guardrail setup. Plain `cbg handoff-pack` uses the bundled sample benchmark files (`examples/baseline.json` and `examples/current.json`) and automatically applies the bundled mixed-metric directions config (`examples/directions.json`):
 
 ```bash
-cbg handoff-pack --baseline base.json --current current.json --output-dir reports/handoff
+cbg handoff-pack
 ```
 
-For mixed benchmark files, pass a directions config explicitly:
+Custom benchmark files can be used without a directions config; in that case, every metric uses the global fallback `--direction` value:
+
+```bash
+cbg handoff-pack --baseline base.json --current current.json --direction higher_is_worse --output-dir reports/handoff
+```
+
+For custom mixed benchmark files, pass a directions config explicitly:
 
 ```bash
 cbg handoff-pack --baseline examples/baseline.json --current examples/current.json --directions-config examples/directions.json --threshold 10 --direction higher_is_worse --output-dir reports/handoff
@@ -187,13 +193,19 @@ cbg compare-files examples/baseline.json examples/current.json --threshold 10 --
 
 The Codex Handoff Pack is the final Build Week workflow layer for teams that want to go beyond detecting a benchmark regression. It collects the comparison report, browser-friendly HTML report, Codex Fix Prompt, GitHub issue Markdown, and GitHub Actions guardrail workflow into one output directory so a developer can immediately open an issue, hand the investigation to Codex, and add CI protection against repeat regressions.
 
-Simple command using the global fallback metric direction for all metrics:
+Plain command using the bundled sample benchmark files and bundled directions config:
 
 ```bash
-cbg handoff-pack --baseline base.json --current current.json --output-dir reports/handoff
+cbg handoff-pack
 ```
 
-Advanced command using per-metric directions from a config file:
+Custom benchmark files can omit `--directions-config` when all metrics share the fallback `--direction` behavior:
+
+```bash
+cbg handoff-pack --baseline base.json --current current.json --direction higher_is_worse --output-dir reports/handoff
+```
+
+Advanced command using per-metric directions from a config file for mixed metrics:
 
 ```bash
 cbg handoff-pack --baseline examples/baseline.json --current examples/current.json --directions-config examples/directions.json --threshold 10 --direction higher_is_worse --output-dir reports/handoff
@@ -213,7 +225,7 @@ If regressions are found, `github_issue.md` includes the regressed metrics table
 
 By default, Codex Benchmark Guardian treats higher current values as worse. This matches latency, runtime, and memory metrics: a regression is detected when the current value increases by at least the configured threshold percentage.
 
-Some metrics are better when they are higher, such as throughput or requests per second. For those, pass `--direction lower_is_worse`; a regression is detected when the current value decreases by at least the threshold percentage. For `compare-files`, you can also pass `--directions-config` to configure direction per metric while keeping `--direction` as the fallback for metrics missing from the config.
+Some metrics are better when they are higher, such as throughput or requests per second. For those, pass `--direction lower_is_worse`; a regression is detected when the current value decreases by at least the threshold percentage. For `compare-files` and `handoff-pack`, you can also pass `--directions-config` to configure direction per metric while keeping `--direction` as the fallback for metrics missing from the config. Plain `cbg handoff-pack` is a special sample-data convenience path: it uses `examples/baseline.json`, `examples/current.json`, and `examples/directions.json`. When you pass custom benchmark files without `--directions-config`, `handoff-pack` does not read the bundled directions config and instead relies on `--direction`.
 
 Supported directions are:
 

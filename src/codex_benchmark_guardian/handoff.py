@@ -17,6 +17,24 @@ from codex_benchmark_guardian.report import (
     generate_markdown_report,
 )
 
+DEFAULT_BASELINE_PATH = Path("examples/baseline.json")
+DEFAULT_CURRENT_PATH = Path("examples/current.json")
+DEFAULT_DIRECTIONS_CONFIG_PATH = Path("examples/directions.json")
+
+
+def resolve_handoff_directions_config_path(
+    *,
+    baseline_path: Path,
+    current_path: Path,
+    directions_config_path: Path | None,
+) -> Path | None:
+    """Return the directions config path that handoff-pack should use."""
+    if directions_config_path is not None:
+        return directions_config_path
+    if baseline_path == DEFAULT_BASELINE_PATH and current_path == DEFAULT_CURRENT_PATH:
+        return DEFAULT_DIRECTIONS_CONFIG_PATH
+    return None
+
 
 @dataclass(frozen=True)
 class HandoffPackPaths:
@@ -39,9 +57,14 @@ def generate_handoff_pack(
     """Generate a complete benchmark regression developer handoff pack."""
     baseline_metrics = load_benchmark_file(baseline_path)
     current_metrics = load_benchmark_file(current_path)
+    effective_directions_config_path = resolve_handoff_directions_config_path(
+        baseline_path=baseline_path,
+        current_path=current_path,
+        directions_config_path=directions_config_path,
+    )
     directions = (
-        load_directions_config(directions_config_path)
-        if directions_config_path is not None
+        load_directions_config(effective_directions_config_path)
+        if effective_directions_config_path is not None
         else None
     )
     results = compare_benchmark_metrics(
@@ -71,7 +94,7 @@ def generate_handoff_pack(
         generate_github_actions_workflow(
             baseline_path=baseline_path,
             current_path=current_path,
-            directions_config_path=directions_config_path,
+            directions_config_path=effective_directions_config_path,
             threshold=threshold,
             direction=direction,
         ),
