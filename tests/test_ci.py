@@ -87,6 +87,21 @@ def test_dashboard_sample_workflow_context_uses_regressing_examples() -> None:
     assert "matches this dashboard analysis" in context.note
 
 
+def test_dashboard_sample_workflow_includes_directions_config() -> None:
+    context = select_dashboard_workflow_context(
+        use_sample_data=True,
+        has_directions_upload=False,
+    )
+
+    workflow = generate_github_actions_workflow(
+        baseline_path=context.baseline_path,
+        current_path=context.current_path,
+        directions_config_path=context.directions_config_path,
+    )
+
+    assert "--directions-config 'examples/directions.json'" in workflow
+
+
 def test_dashboard_upload_workflow_context_uses_placeholder_repo_paths() -> None:
     context = select_dashboard_workflow_context(
         use_sample_data=False,
@@ -97,7 +112,23 @@ def test_dashboard_upload_workflow_context_uses_placeholder_repo_paths() -> None
     assert context.current_path == Path("benchmarks/current.json")
     assert context.directions_config_path == Path("benchmarks/directions.json")
     assert "Uploaded files are analyzed in-memory" in context.note
+    assert "Save the uploaded directions config at benchmarks/directions.json" in context.note
     assert "No directions config was uploaded" not in context.note
+
+
+def test_dashboard_upload_workflow_with_directions_upload_includes_directions_config() -> None:
+    context = select_dashboard_workflow_context(
+        use_sample_data=False,
+        has_directions_upload=True,
+    )
+
+    workflow = generate_github_actions_workflow(
+        baseline_path=context.baseline_path,
+        current_path=context.current_path,
+        directions_config_path=context.directions_config_path,
+    )
+
+    assert "--directions-config 'benchmarks/directions.json'" in workflow
 
 
 def test_dashboard_upload_workflow_context_notes_missing_directions_upload() -> None:
@@ -106,8 +137,42 @@ def test_dashboard_upload_workflow_context_notes_missing_directions_upload() -> 
         has_directions_upload=False,
     )
 
-    assert "No directions config was uploaded" in context.note
-    assert "fallback/global direction behavior" in context.note
+    assert context.directions_config_path is None
+    assert (
+        "No directions config was uploaded, so the generated workflow uses the fallback "
+        "metric direction selected in the sidebar."
+    ) in context.note
+
+
+def test_dashboard_upload_workflow_without_directions_upload_omits_directions_config() -> None:
+    context = select_dashboard_workflow_context(
+        use_sample_data=False,
+        has_directions_upload=False,
+    )
+
+    workflow = generate_github_actions_workflow(
+        baseline_path=context.baseline_path,
+        current_path=context.current_path,
+        directions_config_path=context.directions_config_path,
+    )
+
+    assert "--directions-config" not in workflow
+
+
+def test_dashboard_upload_workflow_without_directions_upload_keeps_direction_fallback() -> None:
+    context = select_dashboard_workflow_context(
+        use_sample_data=False,
+        has_directions_upload=False,
+    )
+
+    workflow = generate_github_actions_workflow(
+        baseline_path=context.baseline_path,
+        current_path=context.current_path,
+        directions_config_path=context.directions_config_path,
+        direction=MetricDirection.LOWER_IS_WORSE,
+    )
+
+    assert "--direction lower_is_worse" in workflow
 
 
 def test_generated_workflow_uses_custom_direction() -> None:

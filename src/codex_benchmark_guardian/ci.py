@@ -27,7 +27,7 @@ class DashboardWorkflowContext:
 
     baseline_path: Path
     current_path: Path
-    directions_config_path: Path
+    directions_config_path: Path | None
     note: str
 
 
@@ -52,17 +52,25 @@ def select_dashboard_workflow_context(
         "workflow paths."
     )
     if not has_directions_upload:
-        note = (
-            f"{note} No directions config was uploaded; the generated workflow expects a "
-            "directions config file if per-metric directions are needed. Otherwise it will "
-            "use the fallback/global direction behavior."
+        return DashboardWorkflowContext(
+            baseline_path=DASHBOARD_UPLOAD_BASELINE_PATH,
+            current_path=DASHBOARD_UPLOAD_CURRENT_PATH,
+            directions_config_path=None,
+            note=(
+                f"{note} No directions config was uploaded, so the generated workflow uses "
+                "the fallback metric direction selected in the sidebar."
+            ),
         )
 
     return DashboardWorkflowContext(
         baseline_path=DASHBOARD_UPLOAD_BASELINE_PATH,
         current_path=DASHBOARD_UPLOAD_CURRENT_PATH,
         directions_config_path=DASHBOARD_UPLOAD_DIRECTIONS_CONFIG_PATH,
-        note=note,
+        note=(
+            f"{note} Save the uploaded directions config at "
+            f"{DASHBOARD_UPLOAD_DIRECTIONS_CONFIG_PATH.as_posix()} or edit the workflow "
+            "path to match your repository."
+        ),
     )
 
 
@@ -84,7 +92,7 @@ def generate_github_actions_workflow(
     *,
     baseline_path: Path = DEFAULT_BASELINE_PATH,
     current_path: Path = DEFAULT_CURRENT_PATH,
-    directions_config_path: Path = DEFAULT_DIRECTIONS_CONFIG_PATH,
+    directions_config_path: Path | None = DEFAULT_DIRECTIONS_CONFIG_PATH,
     threshold: float = DEFAULT_THRESHOLD,
     python_version: str = DEFAULT_PYTHON_VERSION,
     direction: MetricDirection = MetricDirection.HIGHER_IS_WORSE,
@@ -93,7 +101,11 @@ def generate_github_actions_workflow(
     threshold_value = _format_threshold(threshold)
     baseline_arg = _quote_path_arg(baseline_path)
     current_arg = _quote_path_arg(current_path)
-    directions_config_arg = _quote_path_arg(directions_config_path)
+    directions_config_line = (
+        f"          --directions-config {_quote_path_arg(directions_config_path)}\n"
+        if directions_config_path is not None
+        else ""
+    )
     markdown_report_arg = _quote_path_arg(DEFAULT_MARKDOWN_REPORT_PATH)
     html_report_arg = _quote_path_arg(DEFAULT_HTML_REPORT_PATH)
     codex_prompt_arg = _quote_path_arg(DEFAULT_CODEX_PROMPT_PATH)
@@ -126,8 +138,7 @@ jobs:
           {current_arg}
           --threshold {threshold_value}
           --direction {direction_value}
-          --directions-config {directions_config_arg}
-          --report {markdown_report_arg}
+{directions_config_line}          --report {markdown_report_arg}
           --html-report {html_report_arg}
           --codex-prompt {codex_prompt_arg}
           --fail-on-regression
@@ -139,7 +150,7 @@ def write_github_actions_workflow(
     *,
     baseline_path: Path = DEFAULT_BASELINE_PATH,
     current_path: Path = DEFAULT_CURRENT_PATH,
-    directions_config_path: Path = DEFAULT_DIRECTIONS_CONFIG_PATH,
+    directions_config_path: Path | None = DEFAULT_DIRECTIONS_CONFIG_PATH,
     threshold: float = DEFAULT_THRESHOLD,
     python_version: str = DEFAULT_PYTHON_VERSION,
     direction: MetricDirection = MetricDirection.HIGHER_IS_WORSE,
