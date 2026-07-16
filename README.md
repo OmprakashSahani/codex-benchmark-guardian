@@ -97,7 +97,7 @@ In the Streamlit dashboard:
 
 ## Demo
 
-Demo video: `<PASTE_YOUTUBE_DEMO_LINK_HERE>`
+Demo video: [Codex Benchmark Guardian | OpenAI Build Week Demo](https://youtu.be/MLPgfpz6Vb0)
 
 ### Launch Interactive Dashboard
 
