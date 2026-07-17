@@ -4,9 +4,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+COMMON_METRICS = {
+    "comparison_latency_ms",
+    "report_generation_latency_ms",
+    "comparison_throughput_metrics_per_second",
+}
 
-def test_benchmark_runner_writes_numeric_metrics_with_directions(tmp_path) -> None:
-    output = tmp_path / "nested" / "metrics.json"
+
+def _run_harness(tmp_path: Path, mode: str, output_name: str) -> dict[str, float]:
+    output = tmp_path / "nested" / output_name
     subprocess.run(
         [
             sys.executable,
@@ -14,36 +20,40 @@ def test_benchmark_runner_writes_numeric_metrics_with_directions(tmp_path) -> No
             "--output",
             str(output),
             "--workload-size",
-            "8",
+            "4",
             "--iterations",
-            "2",
-            "--warmups",
             "1",
+            "--warmups",
+            "0",
+            "--benchmark-mode",
+            mode,
+            "--operation-repetitions",
+            "2",
         ],
         check=True,
     )
-    metrics = json.loads(output.read_text())
+    return json.loads(output.read_text())
+
+
+def test_benchmark_runner_writes_numeric_metrics_with_directions(tmp_path) -> None:
+    metrics = _run_harness(tmp_path, "full-pr-gate", "metrics.json")
     directions = json.loads(Path("benchmarks/directions.json").read_text())
-    assert set(metrics) == {
-        "comparison_latency_ms",
-        "report_generation_latency_ms",
-        "pr_gate_generation_latency_ms",
-        "comparison_throughput_metrics_per_second",
-    }
+
+    assert set(metrics) == {*COMMON_METRICS, "pr_gate_generation_latency_ms"}
     assert set(metrics) == set(directions)
     assert all(
         isinstance(value, (int, float)) and math.isfinite(value) for value in metrics.values()
     )
 
 
-def test_benchmark_modes_emit_expected_metric_sets() -> None:
-    from benchmarks.run_project_benchmarks import run_benchmarks
+def test_benchmark_modes_emit_expected_metric_sets(tmp_path) -> None:
+    common = _run_harness(tmp_path, "bootstrap-common", "common.json")
+    full = _run_harness(tmp_path, "full-pr-gate", "full.json")
 
-    common = run_benchmarks(4, 1, 0, "bootstrap-common", 2)
-    full = run_benchmarks(4, 1, 0, "full-pr-gate", 2)
-    assert set(common) == {
-        "comparison_latency_ms",
-        "report_generation_latency_ms",
-        "comparison_throughput_metrics_per_second",
-    }
-    assert set(full) == {*common, "pr_gate_generation_latency_ms"}
+    assert set(common) == COMMON_METRICS
+    assert set(full) == {*COMMON_METRICS, "pr_gate_generation_latency_ms"}
+    assert all(
+        isinstance(value, (int, float)) and math.isfinite(value)
+        for metrics in (common, full)
+        for value in metrics.values()
+    )
