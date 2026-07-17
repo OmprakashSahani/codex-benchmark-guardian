@@ -38,10 +38,12 @@ jobs:
             cp baseline-src/benchmarks/run_project_benchmarks.py benchmark-harness/
             cp baseline-src/benchmarks/directions.json benchmark-harness/
             echo "HARNESS_SOURCE=protected-base" >> "$GITHUB_ENV"
+            echo "BENCHMARK_MODE=full-pr-gate" >> "$GITHUB_ENV"
           else
             cp current-src/benchmarks/run_project_benchmarks.py benchmark-harness/
             cp current-src/benchmarks/directions.json benchmark-harness/
             echo "HARNESS_SOURCE=bootstrap-current" >> "$GITHUB_ENV"
+            echo "BENCHMARK_MODE=bootstrap-common" >> "$GITHUB_ENV"
           fi
       - name: Create isolated benchmark environments
         run: |
@@ -54,17 +56,17 @@ jobs:
       - name: Benchmark protected base
         run: >-
           .venv-baseline/bin/python benchmark-harness/run_project_benchmarks.py
-          --output reports/benchmarks/baseline.json --workload-size 500 --iterations 7 --warmups 2
+          --output reports/benchmarks/baseline.json --workload-size 500 --iterations 7 --warmups 2 --benchmark-mode "$BENCHMARK_MODE" --operation-repetitions 50
       - name: Benchmark PR head
         run: >-
           .venv-current/bin/python benchmark-harness/run_project_benchmarks.py
-          --output reports/benchmarks/current.json --workload-size 500 --iterations 7 --warmups 2
+          --output reports/benchmarks/current.json --workload-size 500 --iterations 7 --warmups 2 --benchmark-mode "$BENCHMARK_MODE" --operation-repetitions 50
       - name: Write benchmark provenance
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          python -c 'import json, os; from pathlib import Path; directions=json.loads(Path("benchmark-harness/directions.json").read_text()); Path("reports/benchmarks/provenance.json").write_text(json.dumps({"base_sha": os.environ["BASE_SHA"], "head_sha": os.environ["HEAD_SHA"], "harness_source": os.environ["HARNESS_SOURCE"], "workload_size": 500, "iterations": 7, "warmups": 2, "threshold_percent": 25, "generated_metric_names": sorted(directions)}, indent=2, sort_keys=True) + "\n")'
+          python -c 'import json, os; from pathlib import Path; directions=json.loads(Path("benchmark-harness/directions.json").read_text()); Path("reports/benchmarks/provenance.json").write_text(json.dumps({"base_sha": os.environ["BASE_SHA"], "head_sha": os.environ["HEAD_SHA"], "harness_source": os.environ["HARNESS_SOURCE"], "benchmark_mode": os.environ["BENCHMARK_MODE"], "workload_size": 500, "operation_repetitions": 50, "iterations": 7, "warmups": 2, "threshold_percent": 25, "generated_metric_names": sorted(directions)}, indent=2, sort_keys=True) + "\n")'
       - name: Install current CLI
         run: python -m pip install -e ./current-src
       - name: Build Codex Handoff Pack
@@ -88,7 +90,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           cat reports/handoff/pr_comment.md >> "$GITHUB_STEP_SUMMARY"
-          printf '\nBase: %.7s | Head: %.7s | Harness: %s | Threshold: 25%%\n' "$BASE_SHA" "$HEAD_SHA" "$HARNESS_SOURCE" >> "$GITHUB_STEP_SUMMARY"
+          printf '\nBase: %.7s | Head: %.7s | Harness: %s | Mode: %s | Threshold: 25%%\n' "$BASE_SHA" "$HEAD_SHA" "$HARNESS_SOURCE" "$BENCHMARK_MODE" >> "$GITHUB_STEP_SUMMARY"
       - name: Explain fork comment safety
         if: github.event.pull_request.head.repo.full_name != github.repository
         run: echo "PR comments are disabled for fork pull requests for safety." >> "$GITHUB_STEP_SUMMARY"
@@ -114,6 +116,7 @@ jobs:
               `Base: ${provenance.base_sha.slice(0, 7)} | ` +
               `Head: ${provenance.head_sha.slice(0, 7)} | ` +
               `Harness: ${provenance.harness_source} | ` +
+              `Benchmark mode: ${provenance.benchmark_mode} | ` +
               `Threshold: ${provenance.threshold_percent}%`;
             const body = [comment, provenanceSummary, runLink].join(
               String.fromCharCode(10, 10)

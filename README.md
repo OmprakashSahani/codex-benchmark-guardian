@@ -329,7 +329,7 @@ The production PR gate measures real Codex Benchmark Guardian work rather than e
 
 The workflow copies the protected-base harness into a neutral directory for both runs, so a PR cannot alter the measurement harness. During this one-time rollout, PR #19 falls back to the current checkout only when the base lacks the harness; the artifact and job summary record `bootstrap-current`. Future PRs record `protected-base`. It uploads base/current numeric JSON, provenance (SHAs, workload, harness source, and threshold), and the entire Handoff Pack before enforcement.
 
-The CI threshold is **25%** to be conservative about shared-runner timing noise; same-runner execution and median samples reduce noise. Teams can customize the generated workflow's workload and threshold. Fixed `examples/pr_gate_current_ready.json` and `examples/pr_gate_current_block.json` remain local demonstration fixtures only.
+The CI threshold is **25%** to be conservative about shared-runner timing noise; each measured operation is also batched 50 times before normalization, while median samples and same-runner execution reduce scheduler noise. During initial rollout, `bootstrap-common` measures only comparison, report generation, and throughput because the protected base cannot fairly implement a new PR-gate feature. Future protected-base runs use `full-pr-gate`, adding PR summary/comment generation. The selected mode and repetition count are recorded in provenance and comments. Teams can customize the generated workflow's workload and threshold. Fixed `examples/pr_gate_current_ready.json` and `examples/pr_gate_current_block.json` remain local demonstration fixtures only.
 
 ```bash
 cbg init-pr-gate

@@ -226,3 +226,15 @@ def test_generated_pr_gate_workflow_is_valid_yaml_and_matches_committed() -> Non
     assert "\n[View this workflow run]" not in generated
     assert "comment.body && comment.body.includes(marker)" in generated
     assert "<!-- codex-benchmark-guardian:pr-gate -->" in generated
+
+
+def test_pr_gate_workflow_uses_one_mode_and_batch_size_for_both_revisions() -> None:
+    from codex_benchmark_guardian.ci import generate_pr_gate_workflow
+
+    workflow = generate_pr_gate_workflow()
+    assert "BENCHMARK_MODE=bootstrap-common" in workflow
+    assert "BENCHMARK_MODE=full-pr-gate" in workflow
+    assert workflow.count('--benchmark-mode "$BENCHMARK_MODE"') == 2
+    assert workflow.count("--operation-repetitions 50") == 2
+    assert '"benchmark_mode": os.environ["BENCHMARK_MODE"]' in workflow
+    assert '"operation_repetitions": 50' in workflow
