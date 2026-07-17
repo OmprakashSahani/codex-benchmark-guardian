@@ -188,22 +188,41 @@ jobs:
     permissions: {contents: read}
     steps:
       - uses: actions/checkout@v4
-        with: {ref: ${{ github.event.pull_request.base.sha }}, path: protected-base, persist-credentials: false}
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: protected-base
+          persist-credentials: false
       - uses: actions/checkout@v4
-        with: {repository: ${{ github.event.pull_request.head.repo.full_name }}, ref: ${{ github.event.pull_request.head.sha }}, path: pr-head, persist-credentials: false}
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr-head
+          persist-credentials: false
       - name: Prepare trusted runtime image
         run: |
           docker version
           cp -R protected-base/benchmarks benchmark-harness
-          docker build -t cbg-runtime protected-base
+          cat > "$RUNNER_TEMP/cbg-runtime.Dockerfile" <<'DOCKERFILE'
+          FROM python:3.12-slim
+          WORKDIR /trusted-base
+          COPY . /trusted-base
+          RUN python -m pip install --upgrade pip setuptools wheel && python -m pip install /trusted-base
+          WORKDIR /
+          DOCKERFILE
+          docker build --file "$RUNNER_TEMP/cbg-runtime.Dockerfile" --tag cbg-runtime protected-base
           docker image inspect cbg-runtime --format '{{.Id}}' > runtime-image-id.txt
+          test -s runtime-image-id.txt
       - name: Measure protected base
         run: |
           mkdir -p paired-results/base
+          RUNTIME_IMAGE_ID="$(cat runtime-image-id.txt)"
+          test -n "$RUNTIME_IMAGE_ID"
           docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 -v "$PWD/benchmark-harness:/harness:ro" -v "$PWD/paired-results/base:/out" cbg-runtime python /harness/run_project_benchmarks.py --output /out/baseline.json --benchmark-mode full-pr-gate --workload-size 500 --iterations 7 --warmups 2 --operation-repetitions 50
       - name: Measure PR head
         run: |
           mkdir -p paired-results/current
+          RUNTIME_IMAGE_ID="$(cat runtime-image-id.txt)"
+          test -n "$RUNTIME_IMAGE_ID"
           docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 -v "$PWD/benchmark-harness:/harness:ro" -v "$PWD/pr-head:/pr-head:ro" -v "$PWD/paired-results/current:/out" cbg-runtime sh -c 'python -m pip install --no-deps --no-build-isolation /pr-head && python /harness/run_project_benchmarks.py --output /out/current.json --benchmark-mode full-pr-gate --workload-size 500 --iterations 7 --warmups 2 --operation-repetitions 50'
       - name: Write measurement provenance
         run: |
@@ -212,7 +231,10 @@ jobs:
           cp paired-results/current/current.json paired-results/current.json
           python -c 'import json; from pathlib import Path; Path("paired-results/measurement-provenance.json").write_text(json.dumps({"measurement_strategy":"same-runner-isolated-containers","runtime_image_id":Path("runtime-image-id.txt").read_text().strip(),"harness_source":"protected-base","benchmark_mode":"full-pr-gate"}))'
       - uses: actions/upload-artifact@v4
-        with: {name: codex-benchmark-pair, path: paired-results, if-no-files-found: error}
+        with:
+          name: codex-benchmark-pair
+          path: paired-results
+          if-no-files-found: error
   benchmark-pr-gate:
     needs: [benchmark-pair]
     if: always()
@@ -223,15 +245,23 @@ jobs:
         if: needs.benchmark-pair.result != 'success'
         run: exit 1
       - uses: actions/checkout@v4
-        with: {ref: ${{ github.event.pull_request.base.sha }}, path: protected-base, persist-credentials: false}
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: protected-base
+          persist-credentials: false
       - uses: actions/download-artifact@v4
-        with: {name: codex-benchmark-pair, path: paired-results}
+        with:
+          name: codex-benchmark-pair
+          path: paired-results
       - run: |
           python -m venv .venv-evaluator
           .venv-evaluator/bin/python -m pip install ./protected-base
           .venv-evaluator/bin/cbg handoff-pack --baseline paired-results/baseline.json --current paired-results/current.json --directions-config protected-base/benchmarks/directions.json --threshold 25 --output-dir reports/handoff
       - uses: actions/upload-artifact@v4
-        with: {name: codex-benchmark-gate-evidence, path: reports, if-no-files-found: error}
+        with:
+          name: codex-benchmark-gate-evidence
+          path: reports
+          if-no-files-found: error
       - run: .venv-evaluator/bin/cbg enforce-gate reports/handoff/gate_summary.json
 """  # noqa: E501
 
