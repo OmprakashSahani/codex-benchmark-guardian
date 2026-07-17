@@ -280,7 +280,9 @@ def test_generated_pr_gate_workflow_is_valid_yaml_and_matches_committed() -> Non
     }
     assert "<!-- codex-benchmark-guardian:pr-gate -->" not in generated
     assert "actions/upload-artifact@v4" in generated
-    assert '"$EVALUATOR_CBG" enforce-gate' in generated
+    assert ".venv-evaluator/bin/cbg enforce-gate reports/handoff/gate_summary.json" in generated
+    assert "EVALUATOR_CBG" not in generated
+    assert "bootstrap-current" not in generated and "bootstrap-common" not in generated
 
 
 def test_generated_pr_gate_publisher_workflow_is_valid_yaml_and_matches_committed() -> None:
@@ -298,11 +300,8 @@ def test_generated_pr_gate_publisher_workflow_is_valid_yaml_and_matches_committe
         for value in ("actions: read", "contents: read", "issues: write", "pull-requests: write")
     )
     assert "pull_request" not in parsed["on"]
-    assert (
-        set(parsed["jobs"])
-        == {"benchmark-protected-base", "benchmark-pr-head", "benchmark-pr-gate"}
-        and "pull_request:" not in generated
-    )
+    assert set(parsed["jobs"]) == {"publish"}
+    assert "pull_request:" not in generated
     assert "codex-benchmark-gate-evidence" in generated
     assert "trusted-base" in generated and "persist-credentials: false" in generated
     assert "current-src" not in generated and "workflow_run.head_sha" not in generated
@@ -342,13 +341,18 @@ def test_generated_pr_gate_publisher_workflow_is_valid_yaml_and_matches_committe
     assert "steps.resolve.outputs.base_sha" in generated
 
 
-def test_pr_gate_workflow_uses_one_mode_and_batch_size_for_both_revisions() -> None:
+def test_pr_gate_workflow_uses_protected_full_mode_for_both_revisions() -> None:
     from codex_benchmark_guardian.ci import generate_pr_gate_workflow
 
     workflow = generate_pr_gate_workflow()
-    assert "BENCHMARK_MODE=bootstrap-common" in workflow
-    assert "BENCHMARK_MODE=full-pr-gate" in workflow
-    assert workflow.count('--benchmark-mode "$BENCHMARK_MODE"') == 2
-    assert workflow.count("--operation-repetitions 50") == 2
-    assert '"benchmark_mode": os.environ["BENCHMARK_MODE"]' in workflow
-    assert '"operation_repetitions": 50' in workflow
+    assert "bootstrap-common" not in workflow and "bootstrap-current" not in workflow
+    for option in (
+        "--benchmark-mode full-pr-gate",
+        "--workload-size 500",
+        "--iterations 7",
+        "--warmups 2",
+        "--operation-repetitions 50",
+    ):
+        assert workflow.count(option) == 2
+    for field in ("harness_source", "evaluator_source", "benchmark_mode", "generated_metric_names"):
+        assert field in workflow
