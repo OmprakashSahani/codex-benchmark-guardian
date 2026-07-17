@@ -201,6 +201,12 @@ def test_pr_gate_workflow_is_safe_and_orders_artifact_before_enforcement() -> No
     assert "reports/benchmarks/provenance.json" in workflow
     assert "examples/pr_gate_current.json" not in workflow
     assert "comment.body && comment.body.includes(marker)" in workflow
+    assert "EVALUATOR_SOURCE=protected-base" in workflow
+    assert "EVALUATOR_SOURCE=bootstrap-current" in workflow
+    assert '"$EVALUATOR_CBG" handoff-pack' in workflow
+    assert '"$EVALUATOR_CBG" enforce-gate' in workflow
+    assert "python -m pip install -e ./current-src" not in workflow
+    assert "evaluator_source" in workflow
     assert workflow.index("actions/upload-artifact@v4") < workflow.index("Create or update")
     assert workflow.index("Create or update") < workflow.index("cbg enforce-gate")
 

@@ -210,16 +210,18 @@ jobs:
       - name: Select protected benchmark harness
         run: |
           mkdir -p benchmark-harness reports/benchmarks
-          if [ -f baseline-src/benchmarks/run_project_benchmarks.py ]; then
+          if [ -f baseline-src/benchmarks/run_project_benchmarks.py ] && [ -f baseline-src/src/codex_benchmark_guardian/pr_gate.py ] && [ -f baseline-src/src/codex_benchmark_guardian/handoff.py ]; then
             cp baseline-src/benchmarks/run_project_benchmarks.py benchmark-harness/
             cp baseline-src/benchmarks/directions.json benchmark-harness/
             echo "HARNESS_SOURCE=protected-base" >> "$GITHUB_ENV"
             echo "BENCHMARK_MODE=full-pr-gate" >> "$GITHUB_ENV"
+            echo "BASE_EVALUATOR_SUPPORTED=true" >> "$GITHUB_ENV"
           else
             cp current-src/benchmarks/run_project_benchmarks.py benchmark-harness/
             cp current-src/benchmarks/directions.json benchmark-harness/
             echo "HARNESS_SOURCE=bootstrap-current" >> "$GITHUB_ENV"
             echo "BENCHMARK_MODE=bootstrap-common" >> "$GITHUB_ENV"
+            echo "BASE_EVALUATOR_SUPPORTED=false" >> "$GITHUB_ENV"
           fi
       - name: Create isolated benchmark environments
         run: |
@@ -229,6 +231,17 @@ jobs:
           .venv-current/bin/python -m pip install --upgrade pip
           .venv-baseline/bin/python -m pip install ./baseline-src
           .venv-current/bin/python -m pip install ./current-src
+      - name: Select protected gate evaluator
+        run: |
+          if [ "$BASE_EVALUATOR_SUPPORTED" = "true" ]; then
+            "$GITHUB_WORKSPACE/.venv-baseline/bin/cbg" --help | grep -q handoff-pack
+            "$GITHUB_WORKSPACE/.venv-baseline/bin/cbg" --help | grep -q enforce-gate
+            echo "EVALUATOR_SOURCE=protected-base" >> "$GITHUB_ENV"
+            echo "EVALUATOR_CBG=$GITHUB_WORKSPACE/.venv-baseline/bin/cbg" >> "$GITHUB_ENV"
+          else
+            echo "EVALUATOR_SOURCE=bootstrap-current" >> "$GITHUB_ENV"
+            echo "EVALUATOR_CBG=$GITHUB_WORKSPACE/.venv-current/bin/cbg" >> "$GITHUB_ENV"
+          fi
       - name: Benchmark protected base
         run: >-
           .venv-baseline/bin/python benchmark-harness/run_project_benchmarks.py
@@ -242,12 +255,10 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          python -c 'import json, os; from pathlib import Path; directions=json.loads(Path("benchmark-harness/directions.json").read_text()); Path("reports/benchmarks/provenance.json").write_text(json.dumps({"base_sha": os.environ["BASE_SHA"], "head_sha": os.environ["HEAD_SHA"], "harness_source": os.environ["HARNESS_SOURCE"], "benchmark_mode": os.environ["BENCHMARK_MODE"], "workload_size": 500, "operation_repetitions": 50, "iterations": 7, "warmups": 2, "threshold_percent": 25, "generated_metric_names": sorted(directions)}, indent=2, sort_keys=True) + "\\n")'
-      - name: Install current CLI
-        run: python -m pip install -e ./current-src
+          python -c 'import json, os; from pathlib import Path; directions=json.loads(Path("benchmark-harness/directions.json").read_text()); Path("reports/benchmarks/provenance.json").write_text(json.dumps({"base_sha": os.environ["BASE_SHA"], "head_sha": os.environ["HEAD_SHA"], "harness_source": os.environ["HARNESS_SOURCE"], "evaluator_source": os.environ["EVALUATOR_SOURCE"], "benchmark_mode": os.environ["BENCHMARK_MODE"], "workload_size": 500, "operation_repetitions": 50, "iterations": 7, "warmups": 2, "threshold_percent": 25, "generated_metric_names": sorted(directions)}, indent=2, sort_keys=True) + "\\n")'
       - name: Build Codex Handoff Pack
         run: >-
-          cbg handoff-pack --baseline reports/benchmarks/baseline.json
+          "$EVALUATOR_CBG" handoff-pack --baseline reports/benchmarks/baseline.json
           --current reports/benchmarks/current.json --directions-config benchmark-harness/directions.json
           --threshold 25 --output-dir reports/handoff
       - name: Upload benchmark gate evidence
@@ -292,6 +303,7 @@ jobs:
               `Base: ${provenance.base_sha.slice(0, 7)} | ` +
               `Head: ${provenance.head_sha.slice(0, 7)} | ` +
               `Harness: ${provenance.harness_source} | ` +
+              `Evaluator: ${provenance.evaluator_source} | ` +
               `Benchmark mode: ${provenance.benchmark_mode} | ` +
               `Threshold: ${provenance.threshold_percent}%`;
             const body = [comment, provenanceSummary, runLink].join(
@@ -312,7 +324,7 @@ jobs:
               await github.rest.issues.createComment({ owner, repo, issue_number, body });
             }
       - name: Enforce stored release readiness
-        run: cbg enforce-gate reports/handoff/gate_summary.json
+        run: '"$EVALUATOR_CBG" enforce-gate reports/handoff/gate_summary.json'
 """  # noqa: E501
 
 
