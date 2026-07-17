@@ -213,10 +213,8 @@ def test_pr_gate_publisher_is_trusted_and_regenerates_comment() -> None:
     assert "codex-benchmark-guardian:pr-gate" in workflow
 
 
-def test_generated_pr_gate_workflow_is_valid_yaml_and_matches_committed() -> None:
+def _load_github_workflow_yaml(workflow: str) -> dict[str, object]:
     import yaml
-
-    from codex_benchmark_guardian.ci import generate_pr_gate_workflow
 
     class Loader(yaml.SafeLoader):
         pass
@@ -225,15 +223,51 @@ def test_generated_pr_gate_workflow_is_valid_yaml_and_matches_committed() -> Non
         Loader.yaml_implicit_resolvers[key] = [
             item for item in resolvers if item[0] != "tag:yaml.org,2002:bool"
         ]
+    return yaml.load(workflow, Loader=Loader)
+
+
+def test_generated_pr_gate_workflow_is_valid_yaml_and_matches_committed() -> None:
+    from codex_benchmark_guardian.ci import generate_pr_gate_workflow
+
     generated = generate_pr_gate_workflow()
     committed = Path(".github/workflows/benchmark-pr-gate.yml").read_text(encoding="utf-8")
-    parsed = yaml.load(generated, Loader=Loader)
+    parsed = _load_github_workflow_yaml(generated)
     assert generated == committed
     assert parsed["on"]["pull_request"]["types"] == ["opened", "synchronize", "reopened"]
     assert "benchmark-pr-gate" in parsed["jobs"]
-    assert "\n[View this workflow run]" not in generated
-    assert "comment.body && comment.body.includes(marker)" in generated
+    assert "contents: read" in generated
+    assert "issues: write" not in generated and "pull-requests: write" not in generated
+    assert "actions/github-script@v9" not in generated
+    assert "pull_request_target" not in generated
+    assert "<!-- codex-benchmark-guardian:pr-gate -->" not in generated
+    assert "actions/upload-artifact@v4" in generated
+    assert '"$EVALUATOR_CBG" enforce-gate' in generated
+
+
+def test_generated_pr_gate_publisher_workflow_is_valid_yaml_and_matches_committed() -> None:
+    from codex_benchmark_guardian.ci import generate_pr_gate_publisher_workflow
+
+    generated = generate_pr_gate_publisher_workflow()
+    committed = Path(".github/workflows/benchmark-pr-gate-publish.yml").read_text(encoding="utf-8")
+    parsed = _load_github_workflow_yaml(generated)
+    assert generated == committed
+    assert parsed["on"]["workflow_run"]["workflows"] == ["Benchmark PR Gate"]
+    assert parsed["on"]["workflow_run"]["types"] == ["completed"]
+    assert "publish" in parsed["jobs"]
+    assert all(
+        value in generated
+        for value in ("actions: read", "contents: read", "issues: write", "pull-requests: write")
+    )
+    assert "pull_request_target" not in generated and "pull_request:" not in generated
+    assert "codex-benchmark-gate-evidence" in generated
+    assert "trusted-base" in generated and "persist-credentials: false" in generated
+    assert "current-src" not in generated and "workflow_run.head_sha" not in generated
+    assert "trusted-handoff/pr_comment.md" in generated
+    assert "downloaded-evidence/reports/handoff/pr_comment.md" not in generated
     assert "<!-- codex-benchmark-guardian:pr-gate -->" in generated
+    assert "item.body && item.body.includes(marker)" in generated
+    assert "updateComment" in generated and "createComment" in generated
+    assert "View source workflow run" in generated
 
 
 def test_pr_gate_workflow_uses_one_mode_and_batch_size_for_both_revisions() -> None:
