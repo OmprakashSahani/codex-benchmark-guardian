@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from codex_benchmark_guardian.ci import (
@@ -216,14 +217,44 @@ def test_pr_gate_publisher_is_trusted_and_regenerates_comment() -> None:
 def _load_github_workflow_yaml(workflow: str) -> dict[str, object]:
     import yaml
 
-    class Loader(yaml.SafeLoader):
-        pass
+    class GitHubWorkflowLoader(yaml.SafeLoader):
+        yaml_implicit_resolvers = {
+            key: list(resolvers)
+            for key, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
+        }
 
-    for key, resolvers in list(Loader.yaml_implicit_resolvers.items()):
-        Loader.yaml_implicit_resolvers[key] = [
-            item for item in resolvers if item[0] != "tag:yaml.org,2002:bool"
+    for key, resolvers in list(GitHubWorkflowLoader.yaml_implicit_resolvers.items()):
+        GitHubWorkflowLoader.yaml_implicit_resolvers[key] = [
+            resolver for resolver in resolvers if resolver[0] != "tag:yaml.org,2002:bool"
         ]
-    return yaml.load(workflow, Loader=Loader)
+    GitHubWorkflowLoader.add_implicit_resolver(
+        "tag:yaml.org,2002:bool",
+        re.compile(r"^(?:true|True|TRUE|false|False|FALSE)$"),
+        list("tTfF"),
+    )
+    parsed = yaml.load(workflow, Loader=GitHubWorkflowLoader)
+    assert isinstance(parsed, dict)
+    return parsed
+
+
+def test_github_workflow_loader_preserves_on_and_boolean_values() -> None:
+    parsed = _load_github_workflow_yaml("""on:
+  workflow_run:
+    types: [completed]
+enabled: true
+persist-credentials: false
+legacy_on: on
+legacy_off: off
+legacy_yes: yes
+legacy_no: no
+""")
+    assert "on" in parsed
+    assert parsed["enabled"] is True
+    assert parsed["persist-credentials"] is False
+    assert parsed["legacy_on"] == "on"
+    assert parsed["legacy_off"] == "off"
+    assert parsed["legacy_yes"] == "yes"
+    assert parsed["legacy_no"] == "no"
 
 
 def test_generated_pr_gate_workflow_is_valid_yaml_and_matches_committed() -> None:
