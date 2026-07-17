@@ -46,7 +46,7 @@ make dashboard
 
 Expected results:
 
-- `make test` passes 85 tests (plus one YAML-parser test when PyYAML is installed) in the complete test suite.
+- `make test` passes 86 tests when installed with the development dependencies in the complete test suite.
 - `make demo-handoff` generates the full Codex Handoff Pack under `reports/handoff/`.
 - The bundled sample detects **2 regressions**: `latency_ms` and `throughput_rps`.
 - The bundled handoff score is **50/100 — Block**.

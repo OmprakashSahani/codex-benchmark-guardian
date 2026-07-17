@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import pytest
-
 from codex_benchmark_guardian.ci import (
     DEFAULT_OUTPUT_PATH,
     generate_github_actions_workflow,
@@ -208,7 +206,8 @@ def test_pr_gate_workflow_is_safe_and_orders_artifact_before_enforcement() -> No
 
 
 def test_generated_pr_gate_workflow_is_valid_yaml_and_matches_committed() -> None:
-    yaml = pytest.importorskip("yaml")
+    import yaml
+
     from codex_benchmark_guardian.ci import generate_pr_gate_workflow
 
     class Loader(yaml.SafeLoader):

@@ -9,8 +9,15 @@ import time
 from pathlib import Path
 
 from codex_benchmark_guardian.benchmarks import compare_benchmark_metrics
-from codex_benchmark_guardian.pr_gate import build_pr_gate_summary, generate_pr_comment
+
+try:
+    from codex_benchmark_guardian.pr_gate import build_pr_gate_summary, generate_pr_comment
+except ImportError:
+    build_pr_gate_summary = None
+    generate_pr_comment = None
+
 from codex_benchmark_guardian.regression import MetricDirection
+from codex_benchmark_guardian.release_readiness import generate_release_readiness_markdown
 from codex_benchmark_guardian.report import generate_html_report, generate_markdown_report
 
 METRIC_NAMES = (
@@ -37,8 +44,12 @@ def _measure(workload_size: int) -> dict[str, float]:
     generate_html_report(results)
     report_ns = time.perf_counter_ns() - start
     start = time.perf_counter_ns()
-    summary = build_pr_gate_summary(results)
-    generate_pr_comment(results, summary)
+    if build_pr_gate_summary is not None and generate_pr_comment is not None:
+        summary = build_pr_gate_summary(results)
+        generate_pr_comment(results, summary)
+    else:
+        # Initial rollout compatibility: main has readiness generation but no PR gate module.
+        generate_release_readiness_markdown(results)
     gate_ns = time.perf_counter_ns() - start
     return {
         "comparison_latency_ms": comparison_ns / 1_000_000,
