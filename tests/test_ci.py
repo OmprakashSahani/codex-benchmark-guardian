@@ -268,6 +268,29 @@ def test_generated_pr_gate_publisher_workflow_is_valid_yaml_and_matches_committe
     assert "item.body && item.body.includes(marker)" in generated
     assert "updateComment" in generated and "createComment" in generated
     assert "View source workflow run" in generated
+    steps = parsed["jobs"]["publish"]["steps"]
+    names = [step["name"] for step in steps]
+    expected = [
+        "Resolve eligible pull request",
+        "Download evidence from source run",
+        "Validate evidence and PR identity",
+        "Check out validated protected base",
+        "Regenerate trusted handoff comment",
+        "Publish trusted persistent comment",
+    ]
+    assert names == expected
+    checkout = steps[names.index("Check out validated protected base")]
+    assert checkout["uses"] == "actions/checkout@v4"
+    assert checkout["with"] == {
+        "ref": "${{ steps.resolve.outputs.base_sha }}",
+        "path": "trusted-base",
+        "persist-credentials": False,
+    }
+    assert checkout["if"] == "steps.resolve.outputs.should_publish == 'true'"
+    validation = steps[names.index("Validate evidence and PR identity")]["with"]["script"]
+    assert "Check out validated protected base" not in validation
+    assert "uses: actions/checkout@v4" not in validation
+    assert "trusted-base" not in validation
     assert "github.event.workflow_run.pull_requests.size" not in generated
     assert "Array.isArray(run.pull_requests)" in generated
     assert "prs.length !== 1" in generated

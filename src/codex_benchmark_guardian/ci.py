@@ -366,7 +366,7 @@ jobs:
             const current = JSON.parse(fs.readFileSync(root + 'current.json', 'utf8'));
             const valid = value => typeof value === 'number' && Number.isFinite(value);
             if (Object.keys(baseline).sort().join() !== Object.keys(current).sort().join() || !Object.values(baseline).every(valid) || !Object.values(current).every(valid)) throw new Error('Invalid benchmark evidence');
-                  - name: Check out validated protected base
+      - name: Check out validated protected base
         if: steps.resolve.outputs.should_publish == 'true'
         uses: actions/checkout@v4
         with:
