@@ -14,7 +14,7 @@ permissions:
 jobs:
   publish:
     if: >-
-      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.event == 'pull_request_target' &&
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
@@ -31,7 +31,7 @@ jobs:
               return;
             }
             const pr = await github.rest.pulls.get({ ...context.repo, pull_number: prs[0].number });
-            if (pr.data.base.repo.full_name !== context.repo.owner + '/' + context.repo.repo || run.head_sha !== pr.data.head.sha) throw new Error('Source workflow run does not match its pull request');
+            if (pr.data.base.repo.full_name !== context.repo.owner + '/' + context.repo.repo) throw new Error('Source workflow run does not match its pull request');
             core.setOutput('should_publish', 'true');
             core.setOutput('pr_number', String(pr.data.number));
             core.setOutput('base_sha', String(pr.data.base.sha));
