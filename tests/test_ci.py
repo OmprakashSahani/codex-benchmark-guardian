@@ -272,11 +272,9 @@ def test_generated_pr_gate_workflow_is_valid_yaml_and_matches_committed() -> Non
     assert "issues: write" not in generated and "pull-requests: write" not in generated
     assert "actions/github-script@v9" not in generated
     assert "pull_request" not in parsed["on"]
-    assert set(parsed["jobs"]) == {
-        "benchmark-protected-base",
-        "benchmark-pr-head",
-        "benchmark-pr-gate",
-    }
+    assert set(parsed["jobs"]) == {"benchmark-pair", "benchmark-pr-gate"}
+    assert parsed["jobs"]["benchmark-pr-gate"]["needs"] == ["benchmark-pair"]
+    assert parsed["jobs"]["benchmark-pr-gate"]["if"] == "always()"
     assert "<!-- codex-benchmark-guardian:pr-gate -->" not in generated
     assert "actions/upload-artifact@v4" in generated
     assert ".venv-evaluator/bin/cbg enforce-gate reports/handoff/gate_summary.json" in generated

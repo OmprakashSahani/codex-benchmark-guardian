@@ -41,19 +41,23 @@ jobs:
           mkdir -p paired-results/base
           RUNTIME_IMAGE_ID="$(cat runtime-image-id.txt)"
           test -n "$RUNTIME_IMAGE_ID"
-          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 -v "$PWD/benchmark-harness:/harness:ro" -v "$PWD/paired-results/base:/out" cbg-runtime python /harness/run_project_benchmarks.py --output /out/baseline.json --benchmark-mode full-pr-gate --workload-size 500 --iterations 7 --warmups 2 --operation-repetitions 50
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 -v "$PWD/benchmark-harness:/harness:ro" -v "$PWD/paired-results/base:/out" --cpus 2 --memory 2g "$RUNTIME_IMAGE_ID" python /harness/run_project_benchmarks.py --output /out/baseline.json --benchmark-mode full-pr-gate --workload-size 500 --iterations 7 --warmups 2 --operation-repetitions 50
       - name: Measure PR head
         run: |
           mkdir -p paired-results/current
           RUNTIME_IMAGE_ID="$(cat runtime-image-id.txt)"
           test -n "$RUNTIME_IMAGE_ID"
-          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 -v "$PWD/benchmark-harness:/harness:ro" -v "$PWD/pr-head:/pr-head:ro" -v "$PWD/paired-results/current:/out" cbg-runtime sh -c 'python -m pip install --no-deps --no-build-isolation /pr-head && python /harness/run_project_benchmarks.py --output /out/current.json --benchmark-mode full-pr-gate --workload-size 500 --iterations 7 --warmups 2 --operation-repetitions 50'
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 -v "$PWD/benchmark-harness:/harness:ro" -v "$PWD/pr-head:/pr-head:ro" -v "$PWD/paired-results/current:/out" --cpus 2 --memory 2g "$RUNTIME_IMAGE_ID" sh -c 'python -m pip install --no-deps --no-build-isolation /pr-head && python /harness/run_project_benchmarks.py --output /out/current.json --benchmark-mode full-pr-gate --workload-size 500 --iterations 7 --warmups 2 --operation-repetitions 50'
       - name: Write measurement provenance
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           mkdir -p paired-results
           cp paired-results/base/baseline.json paired-results/baseline.json
           cp paired-results/current/current.json paired-results/current.json
-          python -c 'import json; from pathlib import Path; Path("paired-results/measurement-provenance.json").write_text(json.dumps({"measurement_strategy":"same-runner-isolated-containers","runtime_image_id":Path("runtime-image-id.txt").read_text().strip(),"harness_source":"protected-base","benchmark_mode":"full-pr-gate"}))'
+          python -c 'import json; from pathlib import Path; Path("paired-results/measurement-provenance.json").write_text(json.dumps({"pr_number":int(__import__("os").environ["PR_NUMBER"]),"base_sha":__import__("os").environ["BASE_SHA"],"head_sha":__import__("os").environ["HEAD_SHA"],"measurement_strategy":"same-runner-isolated-containers","runtime_image_id":Path("runtime-image-id.txt").read_text().strip(),"harness_source":"protected-base","benchmark_mode":"full-pr-gate","workload_size":500,"iterations":7,"warmups":2,"operation_repetitions":50,"generated_metric_names":sorted(json.loads(Path("paired-results/baseline.json").read_text()))}))'
       - uses: actions/upload-artifact@v4
         with:
           name: codex-benchmark-pair
