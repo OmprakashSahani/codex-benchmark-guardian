@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 from __future__ import annotations
 
 import shlex
@@ -164,6 +165,82 @@ def write_github_actions_workflow(
         python_version=python_version,
         direction=direction,
     )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(workflow, encoding="utf-8")
+    return workflow
+
+
+DEFAULT_PR_GATE_OUTPUT_PATH = Path(".github/workflows/benchmark-pr-gate.yml")
+
+
+def generate_pr_gate_workflow() -> str:
+    """Generate the safe, deterministic pull-request benchmark gate workflow."""
+    return """name: Benchmark PR Gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: benchmark-pr-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark-pr-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install project
+        run: pip install -e ".[dev]"
+      - name: Build Codex Handoff Pack
+        run: >-
+          cbg handoff-pack --baseline examples/baseline.json
+          --current examples/pr_gate_current.json
+          --directions-config examples/directions.json --output-dir reports/handoff
+      - name: Upload Codex Handoff Pack
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-handoff-pack-pr-${{ github.event.pull_request.number }}
+          path: reports/handoff
+          if-no-files-found: error
+      - name: Add gate comment to job summary
+        run: cat reports/handoff/pr_comment.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Explain fork comment safety
+        if: github.event.pull_request.head.repo.full_name != github.repository
+        run: echo "PR comments are disabled for fork pull requests for safety." >> "$GITHUB_STEP_SUMMARY"
+      - name: Create or update benchmark gate comment
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- codex-benchmark-guardian:pr-gate -->';
+            const body = `${fs.readFileSync('reports/handoff/pr_comment.md', 'utf8').trim()}\n\n[View this workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find(comment => comment.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+      - name: Enforce stored release readiness
+        run: cbg enforce-gate reports/handoff/gate_summary.json
+"""
+
+
+def write_pr_gate_workflow(output_path: Path = DEFAULT_PR_GATE_OUTPUT_PATH) -> str:
+    """Write the PR gate workflow and return its deterministic contents."""
+    workflow = generate_pr_gate_workflow()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(workflow, encoding="utf-8")
     return workflow

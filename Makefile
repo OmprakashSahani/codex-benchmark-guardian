@@ -1,4 +1,4 @@
-.PHONY: install test lint format-check dashboard demo demo-ci demo-handoff demo-ci-fail demo-init-ci clean-reports
+.PHONY: install test lint format-check dashboard demo demo-ci demo-handoff demo-ci-fail demo-init-ci demo-pr-gate-block demo-pr-gate-ready demo-init-pr-gate clean-reports
 
 install:
 	pip install -e ".[dev]"
@@ -49,3 +49,15 @@ demo-ci-fail:
 clean-reports:
 	rm -f reports/report.md reports/report.html reports/codex_fix_prompt.md reports/benchmark_guardian_ci.yml
 	rm -rf reports/handoff
+
+
+demo-pr-gate-block:
+	@cbg handoff-pack --baseline examples/baseline.json --current examples/pr_gate_current_block.json --directions-config examples/directions.json --output-dir reports/handoff
+	@if cbg enforce-gate reports/handoff/gate_summary.json; then echo "Expected Block gate to fail."; exit 1; else echo "Block gate correctly prevented merge."; fi
+
+demo-pr-gate-ready:
+	cbg handoff-pack --baseline examples/baseline.json --current examples/pr_gate_current_ready.json --directions-config examples/directions.json --output-dir reports/handoff
+	cbg enforce-gate reports/handoff/gate_summary.json
+
+demo-init-pr-gate:
+	PYTHONPATH=src python -m codex_benchmark_guardian.cli init-pr-gate --output reports/benchmark-pr-gate.yml

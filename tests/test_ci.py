@@ -179,3 +179,16 @@ def test_generated_workflow_uses_custom_direction() -> None:
     workflow = generate_github_actions_workflow(direction=MetricDirection.LOWER_IS_WORSE)
 
     assert "--direction lower_is_worse" in workflow
+
+
+def test_pr_gate_workflow_is_safe_and_orders_artifact_before_enforcement() -> None:
+    from codex_benchmark_guardian.ci import generate_pr_gate_workflow
+
+    workflow = generate_pr_gate_workflow()
+    assert "pull_request_target" not in workflow
+    assert "actions/upload-artifact@v4" in workflow
+    assert "actions/github-script@v9" in workflow
+    assert "contents: read" in workflow and "pull-requests: write" in workflow
+    assert "head.repo.full_name == github.repository" in workflow
+    assert "codex-benchmark-guardian:pr-gate" in workflow
+    assert workflow.index("actions/upload-artifact@v4") < workflow.index("cbg enforce-gate")

@@ -16,11 +16,14 @@ from codex_benchmark_guardian.ci import (
     DEFAULT_CURRENT_PATH,
     DEFAULT_DIRECTIONS_CONFIG_PATH,
     DEFAULT_OUTPUT_PATH,
+    DEFAULT_PR_GATE_OUTPUT_PATH,
     DEFAULT_PYTHON_VERSION,
     DEFAULT_THRESHOLD,
     write_github_actions_workflow,
+    write_pr_gate_workflow,
 )
 from codex_benchmark_guardian.handoff import generate_handoff_pack
+from codex_benchmark_guardian.pr_gate import PRGateResult
 from codex_benchmark_guardian.regression import MetricDirection, detect_regression
 from codex_benchmark_guardian.report import (
     generate_codex_fix_prompt,
@@ -163,6 +166,39 @@ def init_ci(
     console.print(f"CI guardrail workflow written to: {output_path}")
 
 
+@app.command("init-pr-gate")
+def init_pr_gate(
+    output_path: Annotated[Path, typer.Option("--output", "-o")] = DEFAULT_PR_GATE_OUTPUT_PATH,
+) -> None:
+    """Generate a GitHub pull-request benchmark gate workflow."""
+    write_pr_gate_workflow(output_path)
+    console.print(f"PR gate workflow written to: {output_path}")
+
+
+@app.command("enforce-gate")
+def enforce_gate(summary_path: Annotated[Path, typer.Argument(exists=True)]) -> None:
+    """Enforce the stored deterministic PR gate summary."""
+    import json
+
+    try:
+        data = json.loads(summary_path.read_text(encoding="utf-8"))
+        summary = PRGateResult(**data)
+    except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(f"invalid gate summary JSON: {exc}") from exc
+    required = {"Ready", "Needs Review", "Block"}
+    if (
+        summary.readiness_label not in required
+        or not isinstance(summary.readiness_score, int)
+        or not isinstance(summary.should_block, bool)
+        or summary.should_block != (summary.readiness_label == "Block")
+    ):
+        raise typer.BadParameter("invalid gate summary JSON: incomplete or invalid fields")
+    console.print(f"Readiness: {summary.readiness_label} ({summary.readiness_score}/100)")
+    console.print(f"Recommendation: {summary.recommendation}")
+    if summary.readiness_label == "Block":
+        raise typer.Exit(code=1)
+
+
 @app.command("handoff-pack")
 def handoff_pack(
     baseline_path: Annotated[
@@ -219,6 +255,8 @@ def handoff_pack(
     console.print(f"GitHub issue template written to: {paths.github_issue}")
     console.print(f"CI guardrail workflow written to: {paths.ci_workflow}")
     console.print(f"Release readiness written to: {paths.release_readiness}")
+    console.print(f"PR comment written to: {paths.pr_comment}")
+    console.print(f"Gate summary written to: {paths.gate_summary}")
 
 
 @app.command("compare-files")

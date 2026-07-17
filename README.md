@@ -18,6 +18,7 @@ It helps developers:
 - Generate Codex-ready investigation and fix prompts
 - Create GitHub issue handoff files
 - Generate GitHub Actions benchmark guardrails
+- Gate pull requests with persistent benchmark readiness comments
 - Review results through a CLI or interactive Streamlit dashboard
 
 Built for **OpenAI Build Week**, the project connects benchmark analysis directly to developer follow-through:
@@ -38,12 +39,14 @@ make lint
 make format-check
 make test
 make demo-handoff
+make demo-pr-gate-block
+make demo-pr-gate-ready
 make dashboard
 ```
 
 Expected results:
 
-- `make test` passes the complete test suite.
+- `make test` passes all 84 tests in the complete test suite.
 - `make demo-handoff` generates the full Codex Handoff Pack under `reports/handoff/`.
 - The bundled sample detects **2 regressions**: `latency_ms` and `throughput_rps`.
 - The bundled handoff score is **50/100 — Block**.
@@ -302,6 +305,8 @@ reports/handoff/
 ├── codex_fix_prompt.md
 ├── github_issue.md
 ├── release_readiness.md
+├── pr_comment.md
+├── gate_summary.json
 └── benchmark_guardian_ci.yml
 ```
 
@@ -311,8 +316,34 @@ reports/handoff/
 - `github_issue.md` — issue-ready regression summary and engineering handoff
 - `release_readiness.md` — deterministic release score, classification, and merge recommendation
 - `benchmark_guardian_ci.yml` — GitHub Actions benchmark guardrail
+- `pr_comment.md` — persistent pull-request gate comment
+- `gate_summary.json` — deterministic gate enforcement contract
 
 When no regressions are detected, the pack is still generated and records that no regression fix or issue is currently required.
+
+---
+
+## GitHub PR Benchmark Gate
+
+The PR gate turns the deterministic handoff into a **Block → Fix → Ready** workflow. Generate it with:
+
+```bash
+cbg init-pr-gate
+```
+
+This writes `.github/workflows/benchmark-pr-gate.yml`. On `pull_request` opened, synchronized, and reopened events, the `benchmark-pr-gate` job builds the Handoff Pack, uploads it as an artifact, adds the generated comment to the job summary, and enforces its stored release-readiness result. The comment has a stable marker, so subsequent benchmark runs update one persistent comment rather than creating duplicates. A Block fails the check; Ready and Needs Review pass it.
+
+For same-repository pull requests, the workflow can comment with minimum `contents: read`, `issues: write`, and `pull-requests: write` permissions. Fork PRs still run analysis and artifact upload, but skip comments for safety. Enable **benchmark-pr-gate** as a required status check in your repository rules after committing the workflow.
+
+Run the local demonstrations:
+
+```bash
+make demo-pr-gate-block
+make demo-pr-gate-ready
+make demo-init-pr-gate
+```
+
+The complete Handoff Pack artifact includes `pr_comment.md` and `gate_summary.json` alongside reports, the Codex prompt, issue handoff, CI workflow, and release readiness.
 
 ---
 
