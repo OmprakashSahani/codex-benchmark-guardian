@@ -17,25 +17,78 @@ jobs:
   benchmark-pr-gate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Check out PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: current-src
+      - name: Check out protected base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: baseline-src
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install project
-        run: pip install -e ".[dev]"
+      - name: Select protected benchmark harness
+        run: |
+          mkdir -p benchmark-harness reports/benchmarks
+          if [ -f baseline-src/benchmarks/run_project_benchmarks.py ]; then
+            cp baseline-src/benchmarks/run_project_benchmarks.py benchmark-harness/
+            cp baseline-src/benchmarks/directions.json benchmark-harness/
+            echo "HARNESS_SOURCE=protected-base" >> "$GITHUB_ENV"
+          else
+            cp current-src/benchmarks/run_project_benchmarks.py benchmark-harness/
+            cp current-src/benchmarks/directions.json benchmark-harness/
+            echo "HARNESS_SOURCE=bootstrap-current" >> "$GITHUB_ENV"
+          fi
+      - name: Create isolated benchmark environments
+        run: |
+          python -m venv .venv-baseline
+          python -m venv .venv-current
+          .venv-baseline/bin/python -m pip install --upgrade pip
+          .venv-current/bin/python -m pip install --upgrade pip
+          .venv-baseline/bin/python -m pip install ./baseline-src
+          .venv-current/bin/python -m pip install ./current-src
+      - name: Benchmark protected base
+        run: >-
+          .venv-baseline/bin/python benchmark-harness/run_project_benchmarks.py
+          --output reports/benchmarks/baseline.json --workload-size 500 --iterations 7 --warmups 2
+      - name: Benchmark PR head
+        run: >-
+          .venv-current/bin/python benchmark-harness/run_project_benchmarks.py
+          --output reports/benchmarks/current.json --workload-size 500 --iterations 7 --warmups 2
+      - name: Write benchmark provenance
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python -c 'import json, os; from pathlib import Path; directions=json.loads(Path("benchmark-harness/directions.json").read_text()); Path("reports/benchmarks/provenance.json").write_text(json.dumps({"base_sha": os.environ["BASE_SHA"], "head_sha": os.environ["HEAD_SHA"], "harness_source": os.environ["HARNESS_SOURCE"], "workload_size": 500, "iterations": 7, "warmups": 2, "threshold_percent": 25, "generated_metric_names": sorted(directions)}, indent=2, sort_keys=True) + "\n")'
+      - name: Install current CLI
+        run: python -m pip install -e ./current-src
       - name: Build Codex Handoff Pack
         run: >-
-          cbg handoff-pack --baseline examples/baseline.json
-          --current examples/pr_gate_current.json
-          --directions-config examples/directions.json --output-dir reports/handoff
-      - name: Upload Codex Handoff Pack
+          cbg handoff-pack --baseline reports/benchmarks/baseline.json
+          --current reports/benchmarks/current.json --directions-config benchmark-harness/directions.json
+          --threshold 25 --output-dir reports/handoff
+      - name: Upload benchmark gate evidence
         uses: actions/upload-artifact@v4
         with:
-          name: codex-handoff-pack-pr-${{ github.event.pull_request.number }}
-          path: reports/handoff
+          name: codex-benchmark-gate-pr-${{ github.event.pull_request.number }}
+          path: |
+            reports/benchmarks/baseline.json
+            reports/benchmarks/current.json
+            reports/benchmarks/provenance.json
+            reports/handoff
           if-no-files-found: error
-      - name: Add gate comment to job summary
-        run: cat reports/handoff/pr_comment.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Add gate comment and provenance to job summary
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          cat reports/handoff/pr_comment.md >> "$GITHUB_STEP_SUMMARY"
+          printf '\nBase: %.7s | Head: %.7s | Harness: %s | Threshold: 25%%\n' "$BASE_SHA" "$HEAD_SHA" "$HARNESS_SOURCE" >> "$GITHUB_STEP_SUMMARY"
       - name: Explain fork comment safety
         if: github.event.pull_request.head.repo.full_name != github.repository
         run: echo "PR comments are disabled for fork pull requests for safety." >> "$GITHUB_STEP_SUMMARY"
@@ -46,13 +99,34 @@ jobs:
           script: |
             const fs = require('fs');
             const marker = '<!-- codex-benchmark-guardian:pr-gate -->';
-            const body = `${fs.readFileSync('reports/handoff/pr_comment.md', 'utf8').trim()}
-
-[View this workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+            const comment = fs.readFileSync(
+              'reports/handoff/pr_comment.md',
+              'utf8'
+            ).trim();
+            const runUrl =
+              `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}` +
+              `/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const runLink = `[View this workflow run](${runUrl})`;
+            const provenance = JSON.parse(
+              fs.readFileSync('reports/benchmarks/provenance.json', 'utf8')
+            );
+            const provenanceSummary =
+              `Base: ${provenance.base_sha.slice(0, 7)} | ` +
+              `Head: ${provenance.head_sha.slice(0, 7)} | ` +
+              `Harness: ${provenance.harness_source} | ` +
+              `Threshold: ${provenance.threshold_percent}%`;
+            const body = [comment, provenanceSummary, runLink].join(
+              String.fromCharCode(10, 10)
+            );
             const { owner, repo } = context.repo;
             const issue_number = context.payload.pull_request.number;
-            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
-            const existing = comments.find(comment => comment.body.includes(marker));
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              { owner, repo, issue_number }
+            );
+            const existing = comments.find(
+              comment => comment.body && comment.body.includes(marker)
+            );
             if (existing) {
               await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
             } else {

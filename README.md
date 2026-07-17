@@ -46,7 +46,7 @@ make dashboard
 
 Expected results:
 
-- `make test` passes all 84 tests in the complete test suite.
+- `make test` passes 85 tests (plus one YAML-parser test when PyYAML is installed) in the complete test suite.
 - `make demo-handoff` generates the full Codex Handoff Pack under `reports/handoff/`.
 - The bundled sample detects **2 regressions**: `latency_ms` and `throughput_rps`.
 - The bundled handoff score is **50/100 — Block**.
@@ -325,25 +325,20 @@ When no regressions are detected, the pack is still generated and records that n
 
 ## GitHub PR Benchmark Gate
 
-The PR gate turns the deterministic handoff into a **Block → Fix → Ready** workflow. Generate it with:
+The production PR gate measures real Codex Benchmark Guardian work rather than example JSON. It checks out the exact protected base SHA and PR head into separate directories, installs each revision in its own virtual environment, and runs one fixed workload on the same runner. The harness performs warm-ups and multiple `perf_counter_ns` measurements, then stores medians for comparison, report generation, PR-gate generation, and comparison throughput.
+
+The workflow copies the protected-base harness into a neutral directory for both runs, so a PR cannot alter the measurement harness. During this one-time rollout, PR #19 falls back to the current checkout only when the base lacks the harness; the artifact and job summary record `bootstrap-current`. Future PRs record `protected-base`. It uploads base/current numeric JSON, provenance (SHAs, workload, harness source, and threshold), and the entire Handoff Pack before enforcement.
+
+The CI threshold is **25%** to be conservative about shared-runner timing noise; same-runner execution and median samples reduce noise. Teams can customize the generated workflow's workload and threshold. Fixed `examples/pr_gate_current_ready.json` and `examples/pr_gate_current_block.json` remain local demonstration fixtures only.
 
 ```bash
 cbg init-pr-gate
-```
-
-This writes `.github/workflows/benchmark-pr-gate.yml`. On `pull_request` opened, synchronized, and reopened events, the `benchmark-pr-gate` job builds the Handoff Pack, uploads it as an artifact, adds the generated comment to the job summary, and enforces its stored release-readiness result. The comment has a stable marker, so subsequent benchmark runs update one persistent comment rather than creating duplicates. A Block fails the check; Ready and Needs Review pass it.
-
-For same-repository pull requests, the workflow can comment with minimum `contents: read`, `issues: write`, and `pull-requests: write` permissions. Fork PRs still run analysis and artifact upload, but skip comments for safety. Enable **benchmark-pr-gate** as a required status check in your repository rules after committing the workflow.
-
-Run the local demonstrations:
-
-```bash
 make demo-pr-gate-block
 make demo-pr-gate-ready
 make demo-init-pr-gate
 ```
 
-The complete Handoff Pack artifact includes `pr_comment.md` and `gate_summary.json` alongside reports, the Codex prompt, issue handoff, CI workflow, and release readiness.
+The marker-based comment follows the **Block → Fix → Ready** lifecycle. Same-repository PRs receive a single updated comment; fork PRs benchmark and upload evidence but skip commenting for safety. Enable **benchmark-pr-gate** as a required status check in repository rules. Downstream projects can replace or extend `benchmarks/run_project_benchmarks.py` and `benchmarks/directions.json` with their own stable workload.
 
 ---
 

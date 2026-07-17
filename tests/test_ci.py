@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from codex_benchmark_guardian.ci import (
     DEFAULT_OUTPUT_PATH,
     generate_github_actions_workflow,
@@ -192,3 +194,36 @@ def test_pr_gate_workflow_is_safe_and_orders_artifact_before_enforcement() -> No
     assert "head.repo.full_name == github.repository" in workflow
     assert "codex-benchmark-guardian:pr-gate" in workflow
     assert workflow.index("actions/upload-artifact@v4") < workflow.index("cbg enforce-gate")
+    assert "github.event.pull_request.base.sha" in workflow
+    assert "baseline-src" in workflow and "current-src" in workflow
+    assert "protected-base" in workflow and "bootstrap-current" in workflow
+    assert ".venv-baseline" in workflow and ".venv-current" in workflow
+    assert "reports/benchmarks/baseline.json" in workflow
+    assert "reports/benchmarks/current.json" in workflow
+    assert "reports/benchmarks/provenance.json" in workflow
+    assert "examples/pr_gate_current.json" not in workflow
+    assert "comment.body && comment.body.includes(marker)" in workflow
+    assert workflow.index("actions/upload-artifact@v4") < workflow.index("Create or update")
+    assert workflow.index("Create or update") < workflow.index("cbg enforce-gate")
+
+
+def test_generated_pr_gate_workflow_is_valid_yaml_and_matches_committed() -> None:
+    yaml = pytest.importorskip("yaml")
+    from codex_benchmark_guardian.ci import generate_pr_gate_workflow
+
+    class Loader(yaml.SafeLoader):
+        pass
+
+    for key, resolvers in list(Loader.yaml_implicit_resolvers.items()):
+        Loader.yaml_implicit_resolvers[key] = [
+            item for item in resolvers if item[0] != "tag:yaml.org,2002:bool"
+        ]
+    generated = generate_pr_gate_workflow()
+    committed = Path(".github/workflows/benchmark-pr-gate.yml").read_text(encoding="utf-8")
+    parsed = yaml.load(generated, Loader=Loader)
+    assert generated == committed
+    assert parsed["on"]["pull_request"]["types"] == ["opened", "synchronize", "reopened"]
+    assert "benchmark-pr-gate" in parsed["jobs"]
+    assert "\n[View this workflow run]" not in generated
+    assert "comment.body && comment.body.includes(marker)" in generated
+    assert "<!-- codex-benchmark-guardian:pr-gate -->" in generated
