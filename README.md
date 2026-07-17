@@ -13,6 +13,7 @@ It helps developers:
 
 - Compare baseline and current benchmark results
 - Detect performance regressions across multiple metrics
+- Calculate a deterministic Benchmark Release Readiness Score for merge decisions
 - Explain likely causes with deterministic triage guidance
 - Generate Codex-ready investigation and fix prompts
 - Create GitHub issue handoff files
@@ -42,9 +43,10 @@ make dashboard
 
 Expected results:
 
-- `make test` passes the complete test suite — the latest verified local run passed **72 tests**.
+- `make test` passes the complete test suite.
 - `make demo-handoff` generates the full Codex Handoff Pack under `reports/handoff/`.
 - The bundled sample detects **2 regressions**: `latency_ms` and `throughput_rps`.
+- The bundled handoff score is **50/100 — Block**.
 - `make dashboard` launches the interactive Streamlit dashboard.
 
 ---
@@ -87,6 +89,7 @@ In the Streamlit dashboard:
 - Keep bundled sample data selected
 - Click **Run Analysis**
 - Confirm the dashboard shows 4 compared metrics and 2 regressions
+- Confirm the Benchmark Release Readiness section shows **Block**, **50/100**, and its recommendation
 - Review the Regression Triage Advisor
 - Open the Codex Fix Prompt section
 - Open the GitHub issue handoff section
@@ -144,6 +147,14 @@ make demo-handoff
 - Explains why each regression matters
 - Recommends concrete investigation steps
 - Covers latency, runtime, memory, throughput, accuracy, recall, precision, and success-rate patterns
+
+---
+
+### Benchmark Release Readiness Score
+
+- Starts at 100 and deducts 30 points per high, 20 per medium, and 10 per low regression
+- Classifies scores as **Ready** (90–100), **Needs Review** (70–89), or **Block** (0–69)
+- Provides a deterministic merge recommendation in reports, handoffs, and the dashboard
 
 ---
 
@@ -290,6 +301,7 @@ reports/handoff/
 ├── report.html
 ├── codex_fix_prompt.md
 ├── github_issue.md
+├── release_readiness.md
 └── benchmark_guardian_ci.yml
 ```
 
@@ -297,6 +309,7 @@ reports/handoff/
 - `report.html` — self-contained browser-friendly report
 - `codex_fix_prompt.md` — ready-to-use Codex investigation and fix task
 - `github_issue.md` — issue-ready regression summary and engineering handoff
+- `release_readiness.md` — deterministic release score, classification, and merge recommendation
 - `benchmark_guardian_ci.yml` — GitHub Actions benchmark guardrail
 
 When no regressions are detected, the pack is still generated and records that no regression fix or issue is currently required.
@@ -326,12 +339,13 @@ The dashboard allows users to:
 - Select a fallback metric direction
 - Run the same comparison engine used by the CLI
 - View comparison totals and regression counts
+- View the release readiness label, score, and recommendation near the analysis summary
 - Inspect metric status and severity
 - Review Regression Triage Advisor guidance
 - Preview the generated Codex Fix Prompt
 - Preview the GitHub issue handoff
 - Preview the generated CI workflow
-- Download Markdown, HTML, Codex prompt, issue, and CI artifacts
+- Download Markdown, HTML, Codex prompt, issue, CI, and release readiness artifacts
 
 For Streamlit Community Cloud, use `app.py` as the entry file and `requirements.txt` for deployment dependencies.
 

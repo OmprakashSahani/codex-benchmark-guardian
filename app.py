@@ -15,6 +15,10 @@ from codex_benchmark_guardian.ci import (
     select_dashboard_workflow_context,
 )
 from codex_benchmark_guardian.regression import MetricDirection
+from codex_benchmark_guardian.release_readiness import (
+    calculate_release_readiness,
+    generate_release_readiness_markdown,
+)
 from codex_benchmark_guardian.report import (
     generate_codex_fix_prompt,
     generate_github_issue,
@@ -138,6 +142,8 @@ if run_analysis:
             st.stop()
 
         regression_count = sum(result.is_regression for result in results)
+        release_readiness = calculate_release_readiness(results)
+        release_readiness_markdown = generate_release_readiness_markdown(results)
         markdown_report = generate_markdown_report(results)
         html_report = generate_html_report(results)
         codex_prompt = generate_codex_fix_prompt(results)
@@ -157,6 +163,12 @@ if run_analysis:
         metric_col, regression_col = st.columns(2)
         metric_col.metric("Total compared metrics", len(results))
         regression_col.metric("Regressions detected", regression_count)
+
+        st.subheader("Benchmark Release Readiness")
+        readiness_col, score_col = st.columns(2)
+        readiness_col.metric("Readiness", release_readiness.label.value)
+        score_col.metric("Score", f"{release_readiness.score}/100")
+        st.write(f"**Recommendation:** {release_readiness.recommendation}")
 
         st.subheader("Metric comparison")
         st.dataframe(_results_table(results), use_container_width=True, hide_index=True)
@@ -197,7 +209,7 @@ if run_analysis:
             st.code(ci_workflow, language="yaml")
 
         st.subheader("Downloads")
-        download_cols = st.columns(5)
+        download_cols = st.columns(6)
         download_cols[0].download_button(
             "Markdown report",
             markdown_report,
@@ -227,6 +239,12 @@ if run_analysis:
             ci_workflow,
             file_name="benchmark-guardian.yml",
             mime="text/yaml",
+        )
+        download_cols[5].download_button(
+            "Release readiness",
+            release_readiness_markdown,
+            file_name="release_readiness.md",
+            mime="text/markdown",
         )
     except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
         st.error(f"Could not run analysis: {exc}")

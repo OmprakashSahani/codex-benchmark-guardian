@@ -10,6 +10,7 @@ from codex_benchmark_guardian.benchmarks import (
 )
 from codex_benchmark_guardian.ci import generate_github_actions_workflow
 from codex_benchmark_guardian.regression import MetricDirection
+from codex_benchmark_guardian.release_readiness import generate_release_readiness_markdown
 from codex_benchmark_guardian.report import (
     generate_codex_fix_prompt,
     generate_github_issue,
@@ -49,6 +50,7 @@ class HandoffPackPaths:
     codex_fix_prompt: Path
     github_issue: Path
     ci_workflow: Path
+    release_readiness: Path
 
 
 def generate_handoff_pack(
@@ -91,11 +93,15 @@ def generate_handoff_pack(
         codex_fix_prompt=output_dir / "codex_fix_prompt.md",
         github_issue=output_dir / "github_issue.md",
         ci_workflow=output_dir / "benchmark_guardian_ci.yml",
+        release_readiness=output_dir / "release_readiness.md",
     )
     paths.report.write_text(generate_markdown_report(results), encoding="utf-8")
     paths.html_report.write_text(generate_html_report(results), encoding="utf-8")
     paths.codex_fix_prompt.write_text(generate_codex_fix_prompt(results), encoding="utf-8")
     paths.github_issue.write_text(generate_github_issue(results), encoding="utf-8")
+    paths.release_readiness.write_text(
+        generate_release_readiness_markdown(results), encoding="utf-8"
+    )
     paths.ci_workflow.write_text(
         generate_github_actions_workflow(
             baseline_path=baseline_path,

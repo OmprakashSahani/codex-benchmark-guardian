@@ -32,6 +32,9 @@ def test_generate_html_report() -> None:
     assert '<h2 id="summary-heading">Summary</h2>' in report
     assert "Total compared metrics: 2" in report
     assert "Regressions detected: 1" in report
+    assert "Benchmark Release Readiness" in report
+    assert "Score:</strong> 70/100" in report
+    assert "Benchmark regressions require review before merging." in report
     assert "<th>Direction</th>" in report
     assert "<th>Change Percent</th>" in report
     assert "<td>latency_ms</td>" in report
@@ -60,6 +63,8 @@ def test_generate_markdown_report_includes_triage_section() -> None:
     assert "### latency_ms" in report
     assert "**Likely area:** Request path latency or dependency wait time" in report
     assert "**Suggested checks:**" in report
+    assert "## Benchmark Release Readiness" in report
+    assert "**Score:** 70/100" in report
 
 
 def test_generate_html_report_includes_triage_section() -> None:
@@ -118,6 +123,7 @@ def test_generate_codex_fix_prompt_with_regressions() -> None:
     assert "memory_mb" not in prompt
     assert "Request path latency or dependency wait time" in prompt
     assert "Inspect this repository" in prompt
+    assert "Release readiness: Needs Review (70/100)" in prompt
 
 
 def test_generate_codex_fix_prompt_without_regressions() -> None:
@@ -178,6 +184,7 @@ def test_generate_github_issue_with_regressions() -> None:
     assert "| latency_ms | higher_is_worse | 100 | 125 | 25.00% | 10.00% | high |" in issue
     assert "Request path latency or dependency wait time" in issue
     assert "Suggested Codex Task" in issue
+    assert "Release readiness score: 70/100" in issue
 
 
 def test_generate_github_issue_without_regressions() -> None:
