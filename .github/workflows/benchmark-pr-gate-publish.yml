@@ -13,9 +13,7 @@ permissions:
 
 jobs:
   publish:
-    if: >-
-      github.event.workflow_run.event == 'pull_request_target' &&
-      github.event.workflow_run.head_repository.full_name == github.repository
+    if: github.event.workflow_run.event == 'pull_request_target'
     runs-on: ubuntu-latest
     steps:
       - name: Resolve eligible pull request
@@ -31,7 +29,15 @@ jobs:
               return;
             }
             const pr = await github.rest.pulls.get({ ...context.repo, pull_number: prs[0].number });
-            if (pr.data.base.repo.full_name !== context.repo.owner + '/' + context.repo.repo) throw new Error('Source workflow run does not match its pull request');
+            const currentRepository = `${context.repo.owner}/${context.repo.repo}`;
+            const baseRepository = pr.data.base.repo?.full_name;
+            const headRepository = pr.data.head.repo?.full_name;
+            if (baseRepository !== currentRepository) throw new Error('Source workflow run does not correspond to this repository');
+            if (!headRepository || headRepository !== currentRepository) {
+              core.setOutput('should_publish', 'false');
+              await core.summary.addRaw('Publisher skipped because persistent benchmark comments are limited to same-repository pull requests.').write();
+              return;
+            }
             core.setOutput('should_publish', 'true');
             core.setOutput('pr_number', String(pr.data.number));
             core.setOutput('base_sha', String(pr.data.base.sha));

@@ -339,6 +339,12 @@ def test_generated_pr_gate_publisher_workflow_is_valid_yaml_and_matches_committe
     assert "prs.length !== 1" in generated
     assert generated.count("steps.resolve.outputs.should_publish == 'true'") == 5
     assert "steps.resolve.outputs.base_sha" in generated
+    assert "workflow_run.head_repository.full_name == github.repository" not in generated
+    assert "pr.data.base.repo?.full_name" in generated
+    assert "pr.data.head.repo?.full_name" in generated
+    assert "currentRepository = `${context.repo.owner}/${context.repo.repo}`" in generated
+    assert "!headRepository || headRepository !== currentRepository" in generated
+    assert "same-repository pull requests" in generated
 
 
 def test_pr_gate_workflow_uses_protected_full_mode_for_both_revisions() -> None:
