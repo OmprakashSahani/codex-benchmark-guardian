@@ -315,11 +315,29 @@ jobs:
   publish:
     if: >-
       github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.head_repository.full_name == github.repository &&
-      github.event.workflow_run.pull_requests.size == 1
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve eligible pull request
+        id: resolve
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const prs = Array.isArray(run.pull_requests) ? run.pull_requests : [];
+            if (prs.length !== 1) {
+              core.setOutput('should_publish', 'false');
+              await core.summary.addRaw('Publisher skipped because the source workflow run did not contain exactly one associated pull request.').write();
+              return;
+            }
+            const pr = await github.rest.pulls.get({ ...context.repo, pull_number: prs[0].number });
+            if (pr.data.base.repo.full_name !== context.repo.owner + '/' + context.repo.repo || run.head_sha !== pr.data.head.sha) throw new Error('Source workflow run does not match its pull request');
+            core.setOutput('should_publish', 'true');
+            core.setOutput('pr_number', String(pr.data.number));
+            core.setOutput('base_sha', String(pr.data.base.sha));
+            core.setOutput('head_sha', String(pr.data.head.sha));
       - name: Download evidence from source run
+        if: steps.resolve.outputs.should_publish == 'true'
         uses: actions/download-artifact@v4
         with:
           name: codex-benchmark-gate-evidence
@@ -327,38 +345,42 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: downloaded-evidence
       - name: Validate evidence and PR identity
+        if: steps.resolve.outputs.should_publish == 'true'
         id: validate
         uses: actions/github-script@v9
+        env:
+          EXPECTED_BASE_SHA: ${{ steps.resolve.outputs.base_sha }}
+          EXPECTED_HEAD_SHA: ${{ steps.resolve.outputs.head_sha }}
         with:
           script: |
             const fs = require('fs');
             const run = context.payload.workflow_run;
-            const prs = run.pull_requests;
-            if (prs.length !== 1) throw new Error('Expected one associated pull request');
-            const pr = await github.rest.pulls.get({ ...context.repo, pull_number: prs[0].number });
+            const expectedBase = process.env.EXPECTED_BASE_SHA;
+            const expectedHead = process.env.EXPECTED_HEAD_SHA;
             const root = 'downloaded-evidence/reports/benchmarks/';
             const provenance = JSON.parse(fs.readFileSync(root + 'provenance.json', 'utf8'));
             const required = ['base_sha', 'head_sha', 'harness_source', 'evaluator_source', 'benchmark_mode', 'threshold_percent', 'operation_repetitions', 'iterations'];
-            if (!required.every(key => key in provenance) || provenance.head_sha !== run.head_sha || provenance.base_sha !== pr.data.base.sha) throw new Error('Evidence provenance mismatch');
+            if (!required.every(key => key in provenance) || provenance.head_sha !== expectedHead || provenance.base_sha !== expectedBase) throw new Error('Evidence provenance mismatch');
             if (!['protected-base', 'bootstrap-current'].includes(provenance.harness_source) || !['protected-base', 'bootstrap-current'].includes(provenance.evaluator_source) || !['full-pr-gate', 'bootstrap-common'].includes(provenance.benchmark_mode) || provenance.threshold_percent !== 25 || !Number.isInteger(provenance.operation_repetitions) || provenance.operation_repetitions < 1 || provenance.operation_repetitions > 1000 || !Number.isInteger(provenance.iterations) || provenance.iterations < 1 || provenance.iterations > 100) throw new Error('Invalid evidence provenance');
             const baseline = JSON.parse(fs.readFileSync(root + 'baseline.json', 'utf8'));
             const current = JSON.parse(fs.readFileSync(root + 'current.json', 'utf8'));
             const valid = value => typeof value === 'number' && Number.isFinite(value);
             if (Object.keys(baseline).sort().join() !== Object.keys(current).sort().join() || !Object.values(baseline).every(valid) || !Object.values(current).every(valid)) throw new Error('Invalid benchmark evidence');
-            core.setOutput('base_sha', pr.data.base.sha);
-            core.setOutput('pr_number', String(pr.data.number));
-      - name: Check out validated protected base
+                  - name: Check out validated protected base
+        if: steps.resolve.outputs.should_publish == 'true'
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.validate.outputs.base_sha }}
+          ref: ${{ steps.resolve.outputs.base_sha }}
           path: trusted-base
           persist-credentials: false
       - name: Regenerate trusted handoff comment
+        if: steps.resolve.outputs.should_publish == 'true'
         run: |
           python -m venv .venv-publisher
           .venv-publisher/bin/python -m pip install ./trusted-base
           .venv-publisher/bin/cbg handoff-pack --baseline downloaded-evidence/reports/benchmarks/baseline.json --current downloaded-evidence/reports/benchmarks/current.json --directions-config trusted-base/benchmarks/directions.json --threshold 25 --output-dir trusted-handoff
       - name: Publish trusted persistent comment
+        if: steps.resolve.outputs.should_publish == 'true'
         uses: actions/github-script@v9
         with:
           script: |
@@ -369,7 +391,7 @@ jobs:
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.payload.workflow_run.id}`;
             const details = `Base: ${provenance.base_sha.slice(0, 7)} | Head: ${provenance.head_sha.slice(0, 7)} | Harness: ${provenance.harness_source} | Evaluator: ${provenance.evaluator_source} | Benchmark mode: ${provenance.benchmark_mode} | Threshold: ${provenance.threshold_percent}%`;
             const body = [comment, details, `[View source workflow run](${runUrl})`].join(String.fromCharCode(10, 10));
-            const issue_number = Number('${{ steps.validate.outputs.pr_number }}');
+            const issue_number = Number('${{ steps.resolve.outputs.pr_number }}');
             const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number });
             const existing = comments.find(item => item.body && item.body.includes(marker));
             if (existing) await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });

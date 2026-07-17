@@ -268,6 +268,11 @@ def test_generated_pr_gate_publisher_workflow_is_valid_yaml_and_matches_committe
     assert "item.body && item.body.includes(marker)" in generated
     assert "updateComment" in generated and "createComment" in generated
     assert "View source workflow run" in generated
+    assert "github.event.workflow_run.pull_requests.size" not in generated
+    assert "Array.isArray(run.pull_requests)" in generated
+    assert "prs.length !== 1" in generated
+    assert generated.count("steps.resolve.outputs.should_publish == 'true'") == 5
+    assert "steps.resolve.outputs.base_sha" in generated
 
 
 def test_pr_gate_workflow_uses_one_mode_and_batch_size_for_both_revisions() -> None:
