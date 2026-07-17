@@ -72,6 +72,18 @@ jobs:
           mkdir -p reports/benchmarks
           cp downloaded-baseline/baseline.json reports/benchmarks/baseline.json
           cp downloaded-current/current.json reports/benchmarks/current.json
+      - name: Validate benchmarks and write provenance
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          python -c 'import json, math, os; from pathlib import Path; b=json.loads(Path("reports/benchmarks/baseline.json").read_text()); c=json.loads(Path("reports/benchmarks/current.json").read_text()); d=json.loads(Path("protected-base/benchmarks/directions.json").read_text()); assert isinstance(b, dict) and b and set(b) == set(c) and set(b) <= set(d) and all(isinstance(v, (int, float)) and math.isfinite(v) for x in (b,c) for v in x.values()); Path("reports/benchmarks/provenance.json").write_text(json.dumps({"pr_number": int(os.environ["PR_NUMBER"]), "base_sha": os.environ["BASE_SHA"], "head_sha": os.environ["HEAD_SHA"], "harness_source": "protected-base", "evaluator_source": "protected-base", "benchmark_mode": "full-pr-gate", "workload_size": 500, "operation_repetitions": 50, "iterations": 7, "warmups": 2, "threshold_percent": 25, "generated_metric_names": sorted(b)}, indent=2) + "
+")'
+      - name: Add trusted gate summary
+        run: |
+          cat reports/handoff/pr_comment.md >> "$GITHUB_STEP_SUMMARY"
+          echo "Harness: protected-base | Evaluator: protected-base | Benchmark mode: full-pr-gate | Threshold: 25%" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: codex-benchmark-gate-evidence

@@ -248,6 +248,17 @@ jobs:
           mkdir -p reports/benchmarks
           cp downloaded-baseline/baseline.json reports/benchmarks/baseline.json
           cp downloaded-current/current.json reports/benchmarks/current.json
+      - name: Validate benchmarks and write provenance
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          python -c 'import json, math, os; from pathlib import Path; b=json.loads(Path("reports/benchmarks/baseline.json").read_text()); c=json.loads(Path("reports/benchmarks/current.json").read_text()); d=json.loads(Path("protected-base/benchmarks/directions.json").read_text()); assert isinstance(b, dict) and b and set(b) == set(c) and set(b) <= set(d) and all(isinstance(v, (int, float)) and math.isfinite(v) for x in (b,c) for v in x.values()); Path("reports/benchmarks/provenance.json").write_text(json.dumps({"pr_number": int(os.environ["PR_NUMBER"]), "base_sha": os.environ["BASE_SHA"], "head_sha": os.environ["HEAD_SHA"], "harness_source": "protected-base", "evaluator_source": "protected-base", "benchmark_mode": "full-pr-gate", "workload_size": 500, "operation_repetitions": 50, "iterations": 7, "warmups": 2, "threshold_percent": 25, "generated_metric_names": sorted(b)}, indent=2) + "\n")'
+      - name: Add trusted gate summary
+        run: |
+          cat reports/handoff/pr_comment.md >> "$GITHUB_STEP_SUMMARY"
+          echo "Harness: protected-base | Evaluator: protected-base | Benchmark mode: full-pr-gate | Threshold: 25%" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: codex-benchmark-gate-evidence
@@ -333,7 +344,7 @@ jobs:
             const provenance = JSON.parse(fs.readFileSync(root + 'provenance.json', 'utf8'));
             const required = ['base_sha', 'head_sha', 'harness_source', 'evaluator_source', 'benchmark_mode', 'threshold_percent', 'operation_repetitions', 'iterations'];
             if (!required.every(key => key in provenance) || provenance.head_sha !== expectedHead || provenance.base_sha !== expectedBase) throw new Error('Evidence provenance mismatch');
-            if (!['protected-base', 'bootstrap-current'].includes(provenance.harness_source) || !['protected-base', 'bootstrap-current'].includes(provenance.evaluator_source) || !['full-pr-gate', 'bootstrap-common'].includes(provenance.benchmark_mode) || provenance.threshold_percent !== 25 || !Number.isInteger(provenance.operation_repetitions) || provenance.operation_repetitions < 1 || provenance.operation_repetitions > 1000 || !Number.isInteger(provenance.iterations) || provenance.iterations < 1 || provenance.iterations > 100) throw new Error('Invalid evidence provenance');
+            if (provenance.harness_source !== 'protected-base' || provenance.evaluator_source !== 'protected-base' || provenance.benchmark_mode !== 'full-pr-gate' || provenance.threshold_percent !== 25 || !Number.isInteger(provenance.operation_repetitions) || provenance.operation_repetitions < 1 || provenance.operation_repetitions > 1000 || !Number.isInteger(provenance.iterations) || provenance.iterations < 1 || provenance.iterations > 100) throw new Error('Invalid evidence provenance');
             const baseline = JSON.parse(fs.readFileSync(root + 'baseline.json', 'utf8'));
             const current = JSON.parse(fs.readFileSync(root + 'current.json', 'utf8'));
             const valid = value => typeof value === 'number' && Number.isFinite(value);

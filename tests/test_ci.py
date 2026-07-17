@@ -186,17 +186,20 @@ def test_pr_gate_workflow_is_read_only_and_orders_evidence_before_enforcement() 
     from codex_benchmark_guardian.ci import generate_pr_gate_workflow
 
     workflow = generate_pr_gate_workflow()
-    assert "pull_request_target" not in workflow
-    assert "permissions:\n  contents: read" in workflow
-    assert "issues: write" not in workflow and "pull-requests: write" not in workflow
+    parsed = _load_github_workflow_yaml(workflow)
+    assert "pull_request_target:" in workflow and "pull_request:\n" not in workflow
+    assert parsed["permissions"] == {"contents": "read"}
+    assert "secrets." not in workflow and "actions/cache" not in workflow
     assert "actions/github-script@v9" not in workflow
-    assert workflow.count("persist-credentials: false") == 2
-    assert "name: codex-benchmark-gate-evidence" in workflow
-    assert '"$EVALUATOR_CBG" handoff-pack' in workflow
-    assert '"$EVALUATOR_CBG" enforce-gate' in workflow
-    assert workflow.index("actions/upload-artifact@v4") < workflow.index(
-        '"$EVALUATOR_CBG" enforce-gate'
-    )
+    assert set(parsed["jobs"]) == {
+        "benchmark-protected-base",
+        "benchmark-pr-head",
+        "benchmark-pr-gate",
+    }
+    assert workflow.count("persist-credentials: false") == 4
+    assert "bootstrap-current" not in workflow and "bootstrap-common" not in workflow
+    assert workflow.count("--benchmark-mode full-pr-gate") == 2
+    assert workflow.index("codex-benchmark-gate-evidence") < workflow.rindex("enforce-gate")
 
 
 def test_pr_gate_publisher_is_trusted_and_regenerates_comment() -> None:
@@ -264,12 +267,17 @@ def test_generated_pr_gate_workflow_is_valid_yaml_and_matches_committed() -> Non
     committed = Path(".github/workflows/benchmark-pr-gate.yml").read_text(encoding="utf-8")
     parsed = _load_github_workflow_yaml(generated)
     assert generated == committed
-    assert parsed["on"]["pull_request"]["types"] == ["opened", "synchronize", "reopened"]
+    assert parsed["on"]["pull_request_target"]["types"] == ["opened", "synchronize", "reopened"]
     assert "benchmark-pr-gate" in parsed["jobs"]
     assert "contents: read" in generated
     assert "issues: write" not in generated and "pull-requests: write" not in generated
     assert "actions/github-script@v9" not in generated
-    assert "pull_request_target" not in generated
+    assert "pull_request" not in parsed["on"]
+    assert set(parsed["jobs"]) == {
+        "benchmark-protected-base",
+        "benchmark-pr-head",
+        "benchmark-pr-gate",
+    }
     assert "<!-- codex-benchmark-guardian:pr-gate -->" not in generated
     assert "actions/upload-artifact@v4" in generated
     assert '"$EVALUATOR_CBG" enforce-gate' in generated
@@ -289,7 +297,12 @@ def test_generated_pr_gate_publisher_workflow_is_valid_yaml_and_matches_committe
         value in generated
         for value in ("actions: read", "contents: read", "issues: write", "pull-requests: write")
     )
-    assert "pull_request_target" not in generated and "pull_request:" not in generated
+    assert "pull_request" not in parsed["on"]
+    assert (
+        set(parsed["jobs"])
+        == {"benchmark-protected-base", "benchmark-pr-head", "benchmark-pr-gate"}
+        and "pull_request:" not in generated
+    )
     assert "codex-benchmark-gate-evidence" in generated
     assert "trusted-base" in generated and "persist-credentials: false" in generated
     assert "current-src" not in generated and "workflow_run.head_sha" not in generated
