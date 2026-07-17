@@ -18,6 +18,7 @@ It helps developers:
 - Generate Codex-ready investigation and fix prompts
 - Create GitHub issue handoff files
 - Generate GitHub Actions benchmark guardrails
+- Gate pull requests with persistent benchmark readiness comments
 - Review results through a CLI or interactive Streamlit dashboard
 
 Built for **OpenAI Build Week**, the project connects benchmark analysis directly to developer follow-through:
@@ -38,12 +39,14 @@ make lint
 make format-check
 make test
 make demo-handoff
+make demo-pr-gate-block
+make demo-pr-gate-ready
 make dashboard
 ```
 
 Expected results:
 
-- `make test` passes the complete test suite.
+- `make test` passes 86 tests when installed with the development dependencies in the complete test suite.
 - `make demo-handoff` generates the full Codex Handoff Pack under `reports/handoff/`.
 - The bundled sample detects **2 regressions**: `latency_ms` and `throughput_rps`.
 - The bundled handoff score is **50/100 — Block**.
@@ -302,6 +305,8 @@ reports/handoff/
 ├── codex_fix_prompt.md
 ├── github_issue.md
 ├── release_readiness.md
+├── pr_comment.md
+├── gate_summary.json
 └── benchmark_guardian_ci.yml
 ```
 
@@ -311,8 +316,29 @@ reports/handoff/
 - `github_issue.md` — issue-ready regression summary and engineering handoff
 - `release_readiness.md` — deterministic release score, classification, and merge recommendation
 - `benchmark_guardian_ci.yml` — GitHub Actions benchmark guardrail
+- `pr_comment.md` — persistent pull-request gate comment
+- `gate_summary.json` — deterministic gate enforcement contract
 
 When no regressions are detected, the pack is still generated and records that no regression fix or issue is currently required.
+
+---
+
+## GitHub PR Benchmark Gate
+
+The production PR gate measures real Codex Benchmark Guardian work rather than example JSON. It checks out the exact protected base SHA and PR head into separate directories, installs each revision in its own virtual environment, and runs one fixed workload on the same runner. The harness performs warm-ups and multiple `perf_counter_ns` measurements, then stores medians for comparison, report generation, PR-gate generation, and comparison throughput.
+
+The workflow separately protects the harness and evaluator: the protected-base harness controls what is measured, and the protected-base evaluator controls comparison, readiness, comments, and final enforcement. Running that evaluator from `current-src` would let a PR bypass the gate. During this one-time rollout, the base lacks the required evaluator implementation, so the workflow explicitly uses `bootstrap-current`; after rollout it selects `protected-base` and fails closed if that evaluator fails. Provenance, the job summary, and the PR comment record both `harness_source` and `evaluator_source`, plus the selected mode. It uploads base/current numeric JSON and the complete Handoff Pack before enforcement.
+
+The CI threshold is **25%** to be conservative about shared-runner timing noise; each measured operation is also batched 50 times before normalization, while median samples and same-runner execution reduce scheduler noise. During initial rollout, `bootstrap-common` measures only comparison, report generation, and throughput because the protected base cannot fairly implement a new PR-gate feature. Future protected-base runs use `full-pr-gate`, adding PR summary/comment generation. The selected mode and repetition count are recorded in provenance and comments. Teams can customize the generated workflow's workload and threshold. Fixed `examples/pr_gate_current_ready.json` and `examples/pr_gate_current_block.json` remain local demonstration fixtures only.
+
+```bash
+cbg init-pr-gate
+make demo-pr-gate-block
+make demo-pr-gate-ready
+make demo-init-pr-gate
+```
+
+The marker-based comment follows the **Block → Fix → Ready** lifecycle. Same-repository PRs receive a single updated comment; fork PRs benchmark and upload evidence but skip commenting for safety. Enable **benchmark-pr-gate** as a required status check in repository rules. Downstream projects can replace or extend `benchmarks/run_project_benchmarks.py` and `benchmarks/directions.json` with their own stable workload.
 
 ---
 

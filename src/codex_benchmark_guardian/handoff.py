@@ -9,6 +9,11 @@ from codex_benchmark_guardian.benchmarks import (
     load_directions_config,
 )
 from codex_benchmark_guardian.ci import generate_github_actions_workflow
+from codex_benchmark_guardian.pr_gate import (
+    build_pr_gate_summary,
+    generate_gate_summary_json,
+    generate_pr_comment,
+)
 from codex_benchmark_guardian.regression import MetricDirection
 from codex_benchmark_guardian.release_readiness import generate_release_readiness_markdown
 from codex_benchmark_guardian.report import (
@@ -51,6 +56,8 @@ class HandoffPackPaths:
     github_issue: Path
     ci_workflow: Path
     release_readiness: Path
+    pr_comment: Path
+    gate_summary: Path
 
 
 def generate_handoff_pack(
@@ -94,6 +101,8 @@ def generate_handoff_pack(
         github_issue=output_dir / "github_issue.md",
         ci_workflow=output_dir / "benchmark_guardian_ci.yml",
         release_readiness=output_dir / "release_readiness.md",
+        pr_comment=output_dir / "pr_comment.md",
+        gate_summary=output_dir / "gate_summary.json",
     )
     paths.report.write_text(generate_markdown_report(results), encoding="utf-8")
     paths.html_report.write_text(generate_html_report(results), encoding="utf-8")
@@ -102,6 +111,9 @@ def generate_handoff_pack(
     paths.release_readiness.write_text(
         generate_release_readiness_markdown(results), encoding="utf-8"
     )
+    gate_summary = build_pr_gate_summary(results)
+    paths.pr_comment.write_text(generate_pr_comment(results, gate_summary), encoding="utf-8")
+    paths.gate_summary.write_text(generate_gate_summary_json(gate_summary), encoding="utf-8")
     paths.ci_workflow.write_text(
         generate_github_actions_workflow(
             baseline_path=baseline_path,

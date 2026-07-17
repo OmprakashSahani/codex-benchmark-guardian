@@ -551,6 +551,8 @@ def test_handoff_pack_command_creates_all_expected_files(tmp_path) -> None:
         "github_issue.md",
         "benchmark_guardian_ci.yml",
         "release_readiness.md",
+        "pr_comment.md",
+        "gate_summary.json",
     }
     assert {path.name for path in output_dir.iterdir()} == expected_files
     issue = (output_dir / "github_issue.md").read_text(encoding="utf-8")
