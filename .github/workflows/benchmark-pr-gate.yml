@@ -1,113 +1,59 @@
 name: Benchmark PR Gate
 
-# This definition intentionally runs from the protected base branch.
+# Protected base workflow definition; PR code runs only in read-only containers.
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
-
 permissions:
   contents: read
-
 jobs:
-  benchmark-protected-base:
+  benchmark-pair:
     runs-on: ubuntu-latest
     permissions: {contents: read}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          path: source
-          persist-credentials: false
-      - run: |
-          python -m venv .venv-base
-          .venv-base/bin/python -m pip install ./source
-          .venv-base/bin/python source/benchmarks/run_project_benchmarks.py --output reports/baseline.json --benchmark-mode full-pr-gate --workload-size 500 --iterations 7 --warmups 2 --operation-repetitions 50
-      - uses: actions/upload-artifact@v4
-        with: {name: codex-benchmark-baseline, path: reports/baseline.json, if-no-files-found: error}
-  benchmark-pr-head:
-    runs-on: ubuntu-latest
-    permissions: {contents: read}
-    steps:
+        with: {ref: ${{ github.event.pull_request.base.sha }}, path: protected-base, persist-credentials: false}
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          path: protected-base
-          persist-credentials: false
-      - uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: pr-head
-          persist-credentials: false
-      - run: |
+        with: {repository: ${{ github.event.pull_request.head.repo.full_name }}, ref: ${{ github.event.pull_request.head.sha }}, path: pr-head, persist-credentials: false}
+      - name: Prepare trusted runtime image
+        run: |
+          docker version
           cp -R protected-base/benchmarks benchmark-harness
-          python -m venv .venv-head
-          .venv-head/bin/python -m pip install ./pr-head
-          .venv-head/bin/python benchmark-harness/run_project_benchmarks.py --output reports/current.json --benchmark-mode full-pr-gate --workload-size 500 --iterations 7 --warmups 2 --operation-repetitions 50
+          docker build -t cbg-runtime protected-base
+          docker image inspect cbg-runtime --format '{{.Id}}' > runtime-image-id.txt
+      - name: Measure protected base
+        run: |
+          mkdir -p paired-results/base
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 -v "$PWD/benchmark-harness:/harness:ro" -v "$PWD/paired-results/base:/out" cbg-runtime python /harness/run_project_benchmarks.py --output /out/baseline.json --benchmark-mode full-pr-gate --workload-size 500 --iterations 7 --warmups 2 --operation-repetitions 50
+      - name: Measure PR head
+        run: |
+          mkdir -p paired-results/current
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 -v "$PWD/benchmark-harness:/harness:ro" -v "$PWD/pr-head:/pr-head:ro" -v "$PWD/paired-results/current:/out" cbg-runtime sh -c 'python -m pip install --no-deps --no-build-isolation /pr-head && python /harness/run_project_benchmarks.py --output /out/current.json --benchmark-mode full-pr-gate --workload-size 500 --iterations 7 --warmups 2 --operation-repetitions 50'
+      - name: Write measurement provenance
+        run: |
+          mkdir -p paired-results
+          cp paired-results/base/baseline.json paired-results/baseline.json
+          cp paired-results/current/current.json paired-results/current.json
+          python -c 'import json; from pathlib import Path; Path("paired-results/measurement-provenance.json").write_text(json.dumps({"measurement_strategy":"same-runner-isolated-containers","runtime_image_id":Path("runtime-image-id.txt").read_text().strip(),"harness_source":"protected-base","benchmark_mode":"full-pr-gate"}))'
       - uses: actions/upload-artifact@v4
-        with: {name: codex-benchmark-current, path: reports/current.json, if-no-files-found: error}
+        with: {name: codex-benchmark-pair, path: paired-results, if-no-files-found: error}
   benchmark-pr-gate:
-    needs: [benchmark-protected-base, benchmark-pr-head]
+    needs: [benchmark-pair]
     if: always()
     runs-on: ubuntu-latest
     permissions: {contents: read}
     steps:
       - name: Fail on benchmark infrastructure failure
-        if: needs.benchmark-protected-base.result != 'success' || needs.benchmark-pr-head.result != 'success'
+        if: needs.benchmark-pair.result != 'success'
         run: exit 1
       - uses: actions/checkout@v4
-        if: needs.benchmark-protected-base.result == 'success' && needs.benchmark-pr-head.result == 'success'
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          path: protected-base
-          persist-credentials: false
+        with: {ref: ${{ github.event.pull_request.base.sha }}, path: protected-base, persist-credentials: false}
       - uses: actions/download-artifact@v4
-        with: {name: codex-benchmark-baseline, path: downloaded-baseline}
-      - uses: actions/download-artifact@v4
-        with: {name: codex-benchmark-current, path: downloaded-current}
+        with: {name: codex-benchmark-pair, path: paired-results}
       - run: |
           python -m venv .venv-evaluator
           .venv-evaluator/bin/python -m pip install ./protected-base
-          .venv-evaluator/bin/cbg handoff-pack --baseline downloaded-baseline/baseline.json --current downloaded-current/current.json --directions-config protected-base/benchmarks/directions.json --threshold 25 --output-dir reports/handoff
-          mkdir -p reports/benchmarks
-          cp downloaded-baseline/baseline.json reports/benchmarks/baseline.json
-          cp downloaded-current/current.json reports/benchmarks/current.json
-      - name: Validate benchmarks and write provenance
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          python - <<'PY'
-          import json
-          import math
-          import os
-          from pathlib import Path
-          baseline_path = Path("reports/benchmarks/baseline.json")
-          current_path = Path("reports/benchmarks/current.json")
-          directions_path = Path("protected-base/benchmarks/directions.json")
-          for path in (baseline_path, current_path, directions_path):
-              if not path.is_file() or path.stat().st_size > 1_000_000:
-                  raise SystemExit(f"Invalid benchmark file: {path}")
-          baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
-          current = json.loads(current_path.read_text(encoding="utf-8"))
-          directions = json.loads(directions_path.read_text(encoding="utf-8"))
-          if not isinstance(baseline, dict) or not baseline or not isinstance(current, dict):
-              raise SystemExit("Benchmark evidence must be non-empty objects")
-          metric_names = sorted(baseline)
-          valid = lambda value: isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
-          if set(baseline) != set(current) or not set(baseline).issubset(directions) or not all(valid(value) for values in (baseline, current) for value in values.values()):
-              raise SystemExit("Invalid benchmark evidence")
-          provenance = {"pr_number": int(os.environ["PR_NUMBER"]), "base_sha": os.environ["BASE_SHA"], "head_sha": os.environ["HEAD_SHA"], "harness_source": "protected-base", "evaluator_source": "protected-base", "benchmark_mode": "full-pr-gate", "workload_size": 500, "operation_repetitions": 50, "iterations": 7, "warmups": 2, "threshold_percent": 25, "generated_metric_names": metric_names}
-          Path("reports/benchmarks/provenance.json").write_text(json.dumps(provenance, indent=2) + chr(10), encoding="utf-8")
-          PY
-      - name: Add trusted gate summary
-        run: |
-          cat reports/handoff/pr_comment.md >> "$GITHUB_STEP_SUMMARY"
-          echo "Harness: protected-base | Evaluator: protected-base | Benchmark mode: full-pr-gate | Threshold: 25%" >> "$GITHUB_STEP_SUMMARY"
+          .venv-evaluator/bin/cbg handoff-pack --baseline paired-results/baseline.json --current paired-results/current.json --directions-config protected-base/benchmarks/directions.json --threshold 25 --output-dir reports/handoff
       - uses: actions/upload-artifact@v4
-        with:
-          name: codex-benchmark-gate-evidence
-          path: reports
-          if-no-files-found: error
+        with: {name: codex-benchmark-gate-evidence, path: reports, if-no-files-found: error}
       - run: .venv-evaluator/bin/cbg enforce-gate reports/handoff/gate_summary.json
