@@ -6,8 +6,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
 
 concurrency:
   group: benchmark-pr-gate-${{ github.event.pull_request.number }}
@@ -22,11 +20,13 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           path: current-src
+          persist-credentials: false
       - name: Check out protected base
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           path: baseline-src
+          persist-credentials: false
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -88,7 +88,7 @@ jobs:
       - name: Upload benchmark gate evidence
         uses: actions/upload-artifact@v4
         with:
-          name: codex-benchmark-gate-pr-${{ github.event.pull_request.number }}
+          name: codex-benchmark-gate-evidence
           path: |
             reports/benchmarks/baseline.json
             reports/benchmarks/current.json
@@ -102,50 +102,7 @@ jobs:
         run: |
           cat reports/handoff/pr_comment.md >> "$GITHUB_STEP_SUMMARY"
           printf '\nBase: %.7s | Head: %.7s | Harness: %s | Mode: %s | Threshold: 25%%\n' "$BASE_SHA" "$HEAD_SHA" "$HARNESS_SOURCE" "$BENCHMARK_MODE" >> "$GITHUB_STEP_SUMMARY"
-      - name: Explain fork comment safety
-        if: github.event.pull_request.head.repo.full_name != github.repository
-        run: echo "PR comments are disabled for fork pull requests for safety." >> "$GITHUB_STEP_SUMMARY"
-      - name: Create or update benchmark gate comment
-        if: github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const fs = require('fs');
-            const marker = '<!-- codex-benchmark-guardian:pr-gate -->';
-            const comment = fs.readFileSync(
-              'reports/handoff/pr_comment.md',
-              'utf8'
-            ).trim();
-            const runUrl =
-              `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}` +
-              `/actions/runs/${process.env.GITHUB_RUN_ID}`;
-            const runLink = `[View this workflow run](${runUrl})`;
-            const provenance = JSON.parse(
-              fs.readFileSync('reports/benchmarks/provenance.json', 'utf8')
-            );
-            const provenanceSummary =
-              `Base: ${provenance.base_sha.slice(0, 7)} | ` +
-              `Head: ${provenance.head_sha.slice(0, 7)} | ` +
-              `Harness: ${provenance.harness_source} | ` +
-              `Evaluator: ${provenance.evaluator_source} | ` +
-              `Benchmark mode: ${provenance.benchmark_mode} | ` +
-              `Threshold: ${provenance.threshold_percent}%`;
-            const body = [comment, provenanceSummary, runLink].join(
-              String.fromCharCode(10, 10)
-            );
-            const { owner, repo } = context.repo;
-            const issue_number = context.payload.pull_request.number;
-            const comments = await github.paginate(
-              github.rest.issues.listComments,
-              { owner, repo, issue_number }
-            );
-            const existing = comments.find(
-              comment => comment.body && comment.body.includes(marker)
-            );
-            if (existing) {
-              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
-            } else {
-              await github.rest.issues.createComment({ owner, repo, issue_number, body });
-            }
+      - name: Explain trusted comment publication
+        run: echo "Persistent PR comment publication is handled by the trusted Benchmark PR Gate Publisher workflow." >> "$GITHUB_STEP_SUMMARY"
       - name: Enforce stored release readiness
         run: '"$EVALUATOR_CBG" enforce-gate reports/handoff/gate_summary.json'

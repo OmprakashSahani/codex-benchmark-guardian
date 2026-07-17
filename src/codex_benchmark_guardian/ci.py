@@ -182,8 +182,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
 
 concurrency:
   group: benchmark-pr-gate-${{ github.event.pull_request.number }}
@@ -198,11 +196,13 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           path: current-src
+          persist-credentials: false
       - name: Check out protected base
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           path: baseline-src
+          persist-credentials: false
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -264,7 +264,7 @@ jobs:
       - name: Upload benchmark gate evidence
         uses: actions/upload-artifact@v4
         with:
-          name: codex-benchmark-gate-pr-${{ github.event.pull_request.number }}
+          name: codex-benchmark-gate-evidence
           path: |
             reports/benchmarks/baseline.json
             reports/benchmarks/current.json
@@ -278,51 +278,8 @@ jobs:
         run: |
           cat reports/handoff/pr_comment.md >> "$GITHUB_STEP_SUMMARY"
           printf '\\nBase: %.7s | Head: %.7s | Harness: %s | Mode: %s | Threshold: 25%%\\n' "$BASE_SHA" "$HEAD_SHA" "$HARNESS_SOURCE" "$BENCHMARK_MODE" >> "$GITHUB_STEP_SUMMARY"
-      - name: Explain fork comment safety
-        if: github.event.pull_request.head.repo.full_name != github.repository
-        run: echo "PR comments are disabled for fork pull requests for safety." >> "$GITHUB_STEP_SUMMARY"
-      - name: Create or update benchmark gate comment
-        if: github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const fs = require('fs');
-            const marker = '<!-- codex-benchmark-guardian:pr-gate -->';
-            const comment = fs.readFileSync(
-              'reports/handoff/pr_comment.md',
-              'utf8'
-            ).trim();
-            const runUrl =
-              `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}` +
-              `/actions/runs/${process.env.GITHUB_RUN_ID}`;
-            const runLink = `[View this workflow run](${runUrl})`;
-            const provenance = JSON.parse(
-              fs.readFileSync('reports/benchmarks/provenance.json', 'utf8')
-            );
-            const provenanceSummary =
-              `Base: ${provenance.base_sha.slice(0, 7)} | ` +
-              `Head: ${provenance.head_sha.slice(0, 7)} | ` +
-              `Harness: ${provenance.harness_source} | ` +
-              `Evaluator: ${provenance.evaluator_source} | ` +
-              `Benchmark mode: ${provenance.benchmark_mode} | ` +
-              `Threshold: ${provenance.threshold_percent}%`;
-            const body = [comment, provenanceSummary, runLink].join(
-              String.fromCharCode(10, 10)
-            );
-            const { owner, repo } = context.repo;
-            const issue_number = context.payload.pull_request.number;
-            const comments = await github.paginate(
-              github.rest.issues.listComments,
-              { owner, repo, issue_number }
-            );
-            const existing = comments.find(
-              comment => comment.body && comment.body.includes(marker)
-            );
-            if (existing) {
-              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
-            } else {
-              await github.rest.issues.createComment({ owner, repo, issue_number, body });
-            }
+      - name: Explain trusted comment publication
+        run: echo "Persistent PR comment publication is handled by the trusted Benchmark PR Gate Publisher workflow." >> "$GITHUB_STEP_SUMMARY"
       - name: Enforce stored release readiness
         run: '"$EVALUATOR_CBG" enforce-gate reports/handoff/gate_summary.json'
 """  # noqa: E501
@@ -331,6 +288,99 @@ jobs:
 def write_pr_gate_workflow(output_path: Path = DEFAULT_PR_GATE_OUTPUT_PATH) -> str:
     """Write the PR gate workflow and return its deterministic contents."""
     workflow = generate_pr_gate_workflow()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(workflow, encoding="utf-8")
+    return workflow
+
+
+DEFAULT_PR_GATE_PUBLISHER_OUTPUT_PATH = Path(".github/workflows/benchmark-pr-gate-publish.yml")
+
+
+def generate_pr_gate_publisher_workflow() -> str:
+    """Generate the trusted default-branch publisher workflow."""
+    return """name: Benchmark PR Gate Publisher
+
+on:
+  workflow_run:
+    workflows: ["Benchmark PR Gate"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  publish:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.pull_requests.size == 1
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download evidence from source run
+        uses: actions/download-artifact@v4
+        with:
+          name: codex-benchmark-gate-evidence
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: downloaded-evidence
+      - name: Validate evidence and PR identity
+        id: validate
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const run = context.payload.workflow_run;
+            const prs = run.pull_requests;
+            if (prs.length !== 1) throw new Error('Expected one associated pull request');
+            const pr = await github.rest.pulls.get({ ...context.repo, pull_number: prs[0].number });
+            const root = 'downloaded-evidence/reports/benchmarks/';
+            const provenance = JSON.parse(fs.readFileSync(root + 'provenance.json', 'utf8'));
+            const required = ['base_sha', 'head_sha', 'harness_source', 'evaluator_source', 'benchmark_mode', 'threshold_percent', 'operation_repetitions', 'iterations'];
+            if (!required.every(key => key in provenance) || provenance.head_sha !== run.head_sha || provenance.base_sha !== pr.data.base.sha) throw new Error('Evidence provenance mismatch');
+            if (!['protected-base', 'bootstrap-current'].includes(provenance.harness_source) || !['protected-base', 'bootstrap-current'].includes(provenance.evaluator_source) || !['full-pr-gate', 'bootstrap-common'].includes(provenance.benchmark_mode) || provenance.threshold_percent !== 25 || !Number.isInteger(provenance.operation_repetitions) || provenance.operation_repetitions < 1 || provenance.operation_repetitions > 1000 || !Number.isInteger(provenance.iterations) || provenance.iterations < 1 || provenance.iterations > 100) throw new Error('Invalid evidence provenance');
+            const baseline = JSON.parse(fs.readFileSync(root + 'baseline.json', 'utf8'));
+            const current = JSON.parse(fs.readFileSync(root + 'current.json', 'utf8'));
+            const valid = value => typeof value === 'number' && Number.isFinite(value);
+            if (Object.keys(baseline).sort().join() !== Object.keys(current).sort().join() || !Object.values(baseline).every(valid) || !Object.values(current).every(valid)) throw new Error('Invalid benchmark evidence');
+            core.setOutput('base_sha', pr.data.base.sha);
+            core.setOutput('pr_number', String(pr.data.number));
+      - name: Check out validated protected base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.validate.outputs.base_sha }}
+          path: trusted-base
+          persist-credentials: false
+      - name: Regenerate trusted handoff comment
+        run: |
+          python -m venv .venv-publisher
+          .venv-publisher/bin/python -m pip install ./trusted-base
+          .venv-publisher/bin/cbg handoff-pack --baseline downloaded-evidence/reports/benchmarks/baseline.json --current downloaded-evidence/reports/benchmarks/current.json --directions-config trusted-base/benchmarks/directions.json --threshold 25 --output-dir trusted-handoff
+      - name: Publish trusted persistent comment
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- codex-benchmark-guardian:pr-gate -->';
+            const comment = fs.readFileSync('trusted-handoff/pr_comment.md', 'utf8').trim();
+            const provenance = JSON.parse(fs.readFileSync('downloaded-evidence/reports/benchmarks/provenance.json', 'utf8'));
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.payload.workflow_run.id}`;
+            const details = `Base: ${provenance.base_sha.slice(0, 7)} | Head: ${provenance.head_sha.slice(0, 7)} | Harness: ${provenance.harness_source} | Evaluator: ${provenance.evaluator_source} | Benchmark mode: ${provenance.benchmark_mode} | Threshold: ${provenance.threshold_percent}%`;
+            const body = [comment, details, `[View source workflow run](${runUrl})`].join(String.fromCharCode(10, 10));
+            const issue_number = Number('${{ steps.validate.outputs.pr_number }}');
+            const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number });
+            const existing = comments.find(item => item.body && item.body.includes(marker));
+            if (existing) await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
+            else await github.rest.issues.createComment({ ...context.repo, issue_number, body });
+"""  # noqa: E501
+
+
+def write_pr_gate_publisher_workflow(
+    output_path: Path = DEFAULT_PR_GATE_PUBLISHER_OUTPUT_PATH,
+) -> str:
+    workflow = generate_pr_gate_publisher_workflow()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(workflow, encoding="utf-8")
     return workflow

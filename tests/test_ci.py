@@ -181,44 +181,36 @@ def test_generated_workflow_uses_custom_direction() -> None:
     assert "--direction lower_is_worse" in workflow
 
 
-def test_pr_gate_workflow_is_safe_and_orders_artifact_before_enforcement() -> None:
+def test_pr_gate_workflow_is_read_only_and_orders_evidence_before_enforcement() -> None:
     from codex_benchmark_guardian.ci import generate_pr_gate_workflow
 
     workflow = generate_pr_gate_workflow()
-    handoff_command = '"$EVALUATOR_CBG" handoff-pack'
-    enforcement_command = '"$EVALUATOR_CBG" enforce-gate'
-    handoff_index = workflow.index(handoff_command)
-    artifact_index = workflow.index("actions/upload-artifact@v4")
-    comment_index = workflow.index("Create or update benchmark gate comment")
-    enforcement_index = workflow.index(enforcement_command)
-
     assert "pull_request_target" not in workflow
-    assert "actions/upload-artifact@v4" in workflow
-    assert "actions/github-script@v9" in workflow
-    assert "contents: read" in workflow and "pull-requests: write" in workflow
-    assert "head.repo.full_name == github.repository" in workflow
+    assert "permissions:\n  contents: read" in workflow
+    assert "issues: write" not in workflow and "pull-requests: write" not in workflow
+    assert "actions/github-script@v9" not in workflow
+    assert workflow.count("persist-credentials: false") == 2
+    assert "name: codex-benchmark-gate-evidence" in workflow
+    assert '"$EVALUATOR_CBG" handoff-pack' in workflow
+    assert '"$EVALUATOR_CBG" enforce-gate' in workflow
+    assert workflow.index("actions/upload-artifact@v4") < workflow.index(
+        '"$EVALUATOR_CBG" enforce-gate'
+    )
+
+
+def test_pr_gate_publisher_is_trusted_and_regenerates_comment() -> None:
+    from codex_benchmark_guardian.ci import generate_pr_gate_publisher_workflow
+
+    workflow = generate_pr_gate_publisher_workflow()
+    assert "workflow_run:" in workflow and 'workflows: ["Benchmark PR Gate"]' in workflow
+    assert "actions: read" in workflow and "issues: write" in workflow
+    assert "current-src" not in workflow and "workflow_run.head_sha" not in workflow
+    assert "trusted-base" in workflow and "persist-credentials: false" in workflow
+    assert "codex-benchmark-gate-evidence" in workflow
+    assert "Number.isFinite" in workflow and "Evidence provenance mismatch" in workflow
+    assert "trusted-handoff/pr_comment.md" in workflow
+    assert "downloaded-evidence/reports/handoff/pr_comment.md" not in workflow
     assert "codex-benchmark-guardian:pr-gate" in workflow
-    assert handoff_index < artifact_index
-    assert artifact_index < comment_index
-    assert comment_index < enforcement_index
-    assert "github.event.pull_request.base.sha" in workflow
-    assert "baseline-src" in workflow and "current-src" in workflow
-    assert "protected-base" in workflow and "bootstrap-current" in workflow
-    assert ".venv-baseline" in workflow and ".venv-current" in workflow
-    assert "reports/benchmarks/baseline.json" in workflow
-    assert "reports/benchmarks/current.json" in workflow
-    assert "reports/benchmarks/provenance.json" in workflow
-    assert "examples/pr_gate_current.json" not in workflow
-    assert "comment.body && comment.body.includes(marker)" in workflow
-    assert "EVALUATOR_SOURCE=protected-base" in workflow
-    assert "EVALUATOR_SOURCE=bootstrap-current" in workflow
-    assert handoff_command in workflow
-    assert enforcement_command in workflow
-    assert "cbg handoff-pack" not in workflow
-    assert "cbg enforce-gate" not in workflow
-    assert "python -m pip install -e ./current-src" not in workflow
-    assert "evaluator_source" in workflow
-    assert workflow.rstrip().endswith("enforce-gate reports/handoff/gate_summary.json'")
 
 
 def test_generated_pr_gate_workflow_is_valid_yaml_and_matches_committed() -> None:

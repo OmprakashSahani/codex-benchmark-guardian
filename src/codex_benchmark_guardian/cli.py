@@ -17,9 +17,11 @@ from codex_benchmark_guardian.ci import (
     DEFAULT_DIRECTIONS_CONFIG_PATH,
     DEFAULT_OUTPUT_PATH,
     DEFAULT_PR_GATE_OUTPUT_PATH,
+    DEFAULT_PR_GATE_PUBLISHER_OUTPUT_PATH,
     DEFAULT_PYTHON_VERSION,
     DEFAULT_THRESHOLD,
     write_github_actions_workflow,
+    write_pr_gate_publisher_workflow,
     write_pr_gate_workflow,
 )
 from codex_benchmark_guardian.handoff import generate_handoff_pack
@@ -172,7 +174,10 @@ def init_pr_gate(
 ) -> None:
     """Generate a GitHub pull-request benchmark gate workflow."""
     write_pr_gate_workflow(output_path)
+    publisher_path = output_path.parent / DEFAULT_PR_GATE_PUBLISHER_OUTPUT_PATH.name
+    write_pr_gate_publisher_workflow(publisher_path)
     console.print(f"PR gate workflow written to: {output_path}")
+    console.print(f"PR gate publisher workflow written to: {publisher_path}")
 
 
 @app.command("enforce-gate")
