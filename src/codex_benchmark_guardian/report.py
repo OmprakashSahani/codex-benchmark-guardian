@@ -4,17 +4,25 @@ from collections.abc import Sequence
 from html import escape
 
 from codex_benchmark_guardian.regression import RegressionResult
+from codex_benchmark_guardian.release_readiness import calculate_release_readiness
 from codex_benchmark_guardian.triage import generate_triage_notes
 
 
 def generate_markdown_report(results: Sequence[RegressionResult]) -> str:
     """Generate a Markdown benchmark comparison report."""
     regression_count = sum(result.is_regression for result in results)
+    readiness = calculate_release_readiness(results)
     lines = [
         "# Benchmark Comparison Report",
         "",
         f"Compared metrics: {len(results)}",
         f"Regressions detected: {regression_count}",
+        "",
+        "## Benchmark Release Readiness",
+        "",
+        f"- **Readiness:** {readiness.label.value}",
+        f"- **Score:** {readiness.score}/100",
+        f"- **Recommendation:** {readiness.recommendation}",
         "",
         "| Metric | Direction | Baseline | Current | Change | Threshold | Status | Severity |",
         "| --- | --- | ---: | ---: | ---: | ---: | --- | --- |",
@@ -58,6 +66,7 @@ def generate_codex_fix_prompt(results: Sequence[RegressionResult]) -> str:
     """Generate a Markdown prompt for Codex to investigate benchmark regressions."""
     regression_results = [result for result in results if result.is_regression]
     regression_count = len(regression_results)
+    readiness = calculate_release_readiness(results)
     lines = [
         "# Codex Benchmark Guardian",
         "",
@@ -65,6 +74,8 @@ def generate_codex_fix_prompt(results: Sequence[RegressionResult]) -> str:
         "",
         f"Total compared metrics: {len(results)}",
         f"Regressions detected: {regression_count}",
+        f"Release readiness: {readiness.label.value} ({readiness.score}/100)",
+        f"Recommendation: {readiness.recommendation}",
         "",
     ]
 
@@ -147,6 +158,7 @@ def generate_github_issue(results: Sequence[RegressionResult]) -> str:
     """Generate a Markdown GitHub issue template for benchmark handoff."""
     regression_results = [result for result in results if result.is_regression]
     regression_count = len(regression_results)
+    readiness = calculate_release_readiness(results)
     lines = [
         "# Benchmark regression handoff",
         "",
@@ -192,6 +204,9 @@ def generate_github_issue(results: Sequence[RegressionResult]) -> str:
         [
             f"- Compared metrics count: {len(results)}",
             f"- Regression count: {regression_count}",
+            f"- Release readiness: {readiness.label.value}",
+            f"- Release readiness score: {readiness.score}/100",
+            f"- Recommendation: {readiness.recommendation}",
             "",
         ]
     )
@@ -283,6 +298,7 @@ def generate_github_issue(results: Sequence[RegressionResult]) -> str:
 def generate_html_report(results: Sequence[RegressionResult]) -> str:
     """Generate a self-contained HTML benchmark comparison report."""
     regression_count = sum(result.is_regression for result in results)
+    readiness = calculate_release_readiness(results)
     rows = []
 
     for result in results:
@@ -372,6 +388,13 @@ def generate_html_report(results: Sequence[RegressionResult]) -> str:
       padding: 1rem;
     }}
     .triage-note {{ margin-top: 1rem; }}
+    .readiness {{
+      background: #edf7f1;
+      border: 1px solid #9dd6ae;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      padding: 1rem;
+    }}
   </style>
 </head>
 <body>
@@ -380,6 +403,12 @@ def generate_html_report(results: Sequence[RegressionResult]) -> str:
     <h2 id="summary-heading">Summary</h2>
     <p>Total compared metrics: {len(results)}</p>
     <p>Regressions detected: {regression_count}</p>
+  </section>
+  <section class="readiness" aria-labelledby="readiness-heading">
+    <h2 id="readiness-heading">Benchmark Release Readiness</h2>
+    <p><strong>Readiness:</strong> {escape(readiness.label.value)}</p>
+    <p><strong>Score:</strong> {readiness.score}/100</p>
+    <p><strong>Recommendation:</strong> {escape(readiness.recommendation)}</p>
   </section>
   <table>
     <thead>

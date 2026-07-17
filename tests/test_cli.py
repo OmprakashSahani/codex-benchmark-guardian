@@ -550,6 +550,7 @@ def test_handoff_pack_command_creates_all_expected_files(tmp_path) -> None:
         "codex_fix_prompt.md",
         "github_issue.md",
         "benchmark_guardian_ci.yml",
+        "release_readiness.md",
     }
     assert {path.name for path in output_dir.iterdir()} == expected_files
     issue = (output_dir / "github_issue.md").read_text(encoding="utf-8")
@@ -559,6 +560,9 @@ def test_handoff_pack_command_creates_all_expected_files(tmp_path) -> None:
     assert "`make format-check`" in issue
     assert "`make test`" in issue
     assert "`make demo-ci`" in issue
+    readiness = (output_dir / "release_readiness.md").read_text(encoding="utf-8")
+    assert "**Readiness:** Block" in readiness
+    assert "**Score:** 50/100" in readiness
 
 
 def test_handoff_pack_command_works_without_directions_config(tmp_path, monkeypatch) -> None:

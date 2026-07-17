@@ -218,6 +218,7 @@ def handoff_pack(
     console.print(f"Codex fix prompt written to: {paths.codex_fix_prompt}")
     console.print(f"GitHub issue template written to: {paths.github_issue}")
     console.print(f"CI guardrail workflow written to: {paths.ci_workflow}")
+    console.print(f"Release readiness written to: {paths.release_readiness}")
 
 
 @app.command("compare-files")
