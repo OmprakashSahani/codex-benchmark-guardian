@@ -191,12 +191,11 @@ def test_pr_gate_workflow_is_read_only_and_orders_evidence_before_enforcement() 
     assert parsed["permissions"] == {"contents": "read"}
     assert "secrets." not in workflow and "actions/cache" not in workflow
     assert "actions/github-script@v9" not in workflow
-    assert set(parsed["jobs"]) == {
-        "benchmark-protected-base",
-        "benchmark-pr-head",
-        "benchmark-pr-gate",
-    }
-    assert workflow.count("persist-credentials: false") == 4
+    assert set(parsed["jobs"]) == {"benchmark-pair", "benchmark-pr-gate"}
+    assert workflow.count("persist-credentials: false") == 3
+    gate_job = parsed["jobs"]["benchmark-pr-gate"]
+    assert gate_job["needs"] == ["benchmark-pair"]
+    assert gate_job["if"] == "always()"
     assert "bootstrap-current" not in workflow and "bootstrap-common" not in workflow
     assert workflow.count("--benchmark-mode full-pr-gate") == 2
     assert workflow.index("codex-benchmark-gate-evidence") < workflow.rindex("enforce-gate")
