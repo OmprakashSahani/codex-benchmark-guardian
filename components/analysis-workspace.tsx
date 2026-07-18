@@ -4,9 +4,11 @@ import { Play, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sampleBaseline, sampleCurrent, sampleDirections } from "@/lib/sample-data";
 import type { AnalysisRequest, AnalysisResponse, Direction } from "@/lib/types";
+import type { PrReplayFixture } from "@/lib/pr-demo";
 import { JsonUpload } from "./json-upload";
 import { EmptyResults, Results } from "./results";
 import { Button, Card } from "./ui";
+import { PrReplay } from "./pr-replay";
 
 const pretty = (value: object) => JSON.stringify(value, null, 2);
 
@@ -41,8 +43,10 @@ export function AnalysisWorkspace() {
   const [result, setResult] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [replayStatus, setReplayStatus] = useState("");
   const activeRequest = useRef<AbortController | null>(null);
   const mounted = useRef(true);
+  const resultsArea = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     mounted.current = true;
@@ -60,6 +64,7 @@ export function AnalysisWorkspace() {
     setLoading(false);
     setResult(null);
     setError("");
+    setReplayStatus("");
   }, []);
 
   const valid = useMemo(() => {
@@ -73,17 +78,20 @@ export function AnalysisWorkspace() {
     else { setBaseline(""); setCurrent(""); setDirections(""); }
   }
 
-  async function analyze() {
+  async function runAnalysis(requestPayload: AnalysisRequest, successMessage = "") {
     const controller = new AbortController();
     activeRequest.current?.abort();
     activeRequest.current = controller;
-    setLoading(true); setError(""); setResult(null);
+    setLoading(true); setError(""); setResult(null); setReplayStatus("");
     try {
-      const requestPayload: AnalysisRequest = { baseline: parseMetrics(baseline), current: parseMetrics(current), threshold_percent: threshold, fallback_direction: fallback, directions: directions.trim() ? parseDirections(directions) : undefined, use_sample_data: sample };
       const response = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestPayload), signal: controller.signal });
       const data = await response.json();
       if (!response.ok) throw new Error(data.details?.map((item: { field: string; message: string }) => `${item.field}: ${item.message}`).join(" · ") || data.error || "Analysis failed.");
-      if (mounted.current && activeRequest.current === controller) setResult(data);
+      if (mounted.current && activeRequest.current === controller) {
+        setResult(data);
+        setReplayStatus(successMessage);
+        if (successMessage) requestAnimationFrame(() => resultsArea.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      }
     } catch (reason) {
       if (mounted.current && activeRequest.current === controller && !controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Analysis failed.");
     }
@@ -93,6 +101,24 @@ export function AnalysisWorkspace() {
         setLoading(false);
       }
     }
+  }
+
+  async function analyze() {
+    setReplayStatus("");
+    try {
+      await runAnalysis({ baseline: parseMetrics(baseline), current: parseMetrics(current), threshold_percent: threshold, fallback_direction: fallback, directions: directions.trim() ? parseDirections(directions) : undefined, use_sample_data: sample });
+    } catch (reason) {
+      if (mounted.current) setError(reason instanceof Error ? reason.message : "Analysis failed.");
+    }
+  }
+
+  function replay(fixture: PrReplayFixture) {
+    const nextBaseline = pretty(fixture.baseline);
+    const nextCurrent = pretty(fixture.current);
+    const nextDirections = pretty(fixture.directions);
+    setBaseline(nextBaseline); setCurrent(nextCurrent); setDirections(nextDirections); setThreshold(fixture.threshold); setFallback(fixture.fallbackDirection); setNames({}); setSample(false);
+    const message = fixture.kind === "regression" ? "Regression snapshot analyzed live" : "Verified fix snapshot analyzed live";
+    void runAnalysis({ baseline: parseMetrics(nextBaseline), current: parseMetrics(nextCurrent), threshold_percent: fixture.threshold, fallback_direction: fixture.fallbackDirection, directions: parseDirections(nextDirections), use_sample_data: false }, message);
   }
 
   return (
@@ -112,7 +138,8 @@ export function AnalysisWorkspace() {
         <button className="reset" type="button" onClick={() => toggleSample(true)}><RotateCcw size={15} /> Reset sample</button>
       </Card>
       {error && <div className="error-banner" role="alert"><AlertText />{error}</div>}
-      {result ? <Results result={result} /> : <EmptyResults />}
+      <div ref={resultsArea}>{result ? <Results result={result} /> : <EmptyResults />}</div>
+      <PrReplay loading={loading} status={replayStatus} onReplay={replay} />
     </section>
   );
 }
