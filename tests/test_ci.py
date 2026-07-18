@@ -201,6 +201,17 @@ def test_pr_gate_workflow_is_read_only_and_orders_evidence_before_enforcement() 
     assert workflow.index("codex-benchmark-gate-evidence") < workflow.rindex("enforce-gate")
 
 
+def test_pr_gate_precreates_writable_container_output_files() -> None:
+    from codex_benchmark_guardian.ci import generate_pr_gate_workflow
+
+    workflow = generate_pr_gate_workflow()
+
+    assert "install -m 0666 /dev/null paired-results/base/baseline.json" in workflow
+    assert "install -m 0666 /dev/null paired-results/current/current.json" in workflow
+    assert "chmod 777" not in workflow
+    assert "chmod 0777" not in workflow
+
+
 def test_pr_gate_publisher_is_trusted_and_regenerates_comment() -> None:
     from codex_benchmark_guardian.ci import generate_pr_gate_publisher_workflow
 
