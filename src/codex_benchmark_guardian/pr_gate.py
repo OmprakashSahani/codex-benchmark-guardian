@@ -47,16 +47,6 @@ def _escape(value: object) -> str:
     return str(value).replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
 
 
-def _find_result_by_metric_name(
-    results: Sequence[RegressionResult], metric_name: str
-) -> RegressionResult:
-    """Find one benchmark result using a linear scan."""
-    for result in results:
-        if result.metric_name == metric_name:
-            return result
-    raise ValueError(f"unknown metric: {metric_name}")
-
-
 def generate_pr_comment(
     results: Sequence[RegressionResult], summary: PRGateResult | None = None
 ) -> str:
@@ -94,8 +84,7 @@ def generate_pr_comment(
             "| --- | --- | ---: | ---: | ---: | --- |",
         ]
     )
-    for regression in regressions:
-        result = _find_result_by_metric_name(results, regression.metric_name)
+    for result in regressions:
         lines.append(
             f"| {_escape(result.metric_name)} | {_escape(result.direction.value)} | {_escape(result.baseline_value)} | {_escape(result.current_value)} | {result.change_percent:.2f}% | {_escape(result.severity)} |"
         )
