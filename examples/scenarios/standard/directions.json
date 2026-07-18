@@ -1,0 +1,6 @@
+{
+  "latency_ms": "higher_is_worse",
+  "memory_mb": "higher_is_worse",
+  "runtime_s": "higher_is_worse",
+  "throughput_rps": "lower_is_worse"
+}

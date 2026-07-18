@@ -201,6 +201,16 @@ flowchart LR
 
 ---
 
+## Example JSON scenarios
+
+Permanent dashboard examples live in `examples/scenarios/`. Each evidence set contains:
+
+- `baseline.json` — reference measurements
+- `current.json` — candidate measurements
+- `directions.json` — per-metric semantics: `higher_is_worse` or `lower_is_worse`
+
+The regression threshold is a policy selected by the user or CI workflow; the dashboard defaults to 10%, while this repository's protected PR gate uses 25%. The PR #20 regression and verified-fix files are committed copies of real workflow evidence, retained after workflow artifacts expire. Use the dashboard's **Example scenario** selector to load any set, inspect or edit it, and run it through the current Python engine.
+
 ## Example Capabilities
 
 ### Project Information
