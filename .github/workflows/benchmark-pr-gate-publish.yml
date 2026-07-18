@@ -63,7 +63,7 @@ jobs:
             const run = context.payload.workflow_run;
             const expectedBase = process.env.EXPECTED_BASE_SHA;
             const expectedHead = process.env.EXPECTED_HEAD_SHA;
-            const root = 'downloaded-evidence/reports/benchmarks/';
+            const root = 'downloaded-evidence/benchmarks/';
             const provenance = JSON.parse(fs.readFileSync(root + 'provenance.json', 'utf8'));
             const required = ['base_sha', 'head_sha', 'harness_source', 'evaluator_source', 'benchmark_mode', 'threshold_percent', 'operation_repetitions', 'iterations'];
             if (!required.every(key => key in provenance) || provenance.head_sha !== expectedHead || provenance.base_sha !== expectedBase) throw new Error('Evidence provenance mismatch');
@@ -84,7 +84,7 @@ jobs:
         run: |
           python -m venv .venv-publisher
           .venv-publisher/bin/python -m pip install ./trusted-base
-          .venv-publisher/bin/cbg handoff-pack --baseline downloaded-evidence/reports/benchmarks/baseline.json --current downloaded-evidence/reports/benchmarks/current.json --directions-config trusted-base/benchmarks/directions.json --threshold 25 --output-dir trusted-handoff
+          .venv-publisher/bin/cbg handoff-pack --baseline downloaded-evidence/benchmarks/baseline.json --current downloaded-evidence/benchmarks/current.json --directions-config trusted-base/benchmarks/directions.json --threshold 25 --output-dir trusted-handoff
       - name: Publish trusted persistent comment
         if: steps.resolve.outputs.should_publish == 'true'
         uses: actions/github-script@v9
@@ -93,7 +93,7 @@ jobs:
             const fs = require('fs');
             const marker = '<!-- codex-benchmark-guardian:pr-gate -->';
             const comment = fs.readFileSync('trusted-handoff/pr_comment.md', 'utf8').trim();
-            const provenance = JSON.parse(fs.readFileSync('downloaded-evidence/reports/benchmarks/provenance.json', 'utf8'));
+            const provenance = JSON.parse(fs.readFileSync('downloaded-evidence/benchmarks/provenance.json', 'utf8'));
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.payload.workflow_run.id}`;
             const details = `Base: ${provenance.base_sha.slice(0, 7)} | Head: ${provenance.head_sha.slice(0, 7)} | Harness: ${provenance.harness_source} | Evaluator: ${provenance.evaluator_source} | Benchmark mode: ${provenance.benchmark_mode} | Threshold: ${provenance.threshold_percent}%`;
             const body = [comment, details, `[View source workflow run](${runUrl})`].join(String.fromCharCode(10, 10));

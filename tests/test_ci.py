@@ -357,6 +357,11 @@ def test_generated_pr_gate_publisher_workflow_is_valid_yaml_and_matches_committe
     assert "current-src" not in generated and "workflow_run.head_sha" not in generated
     assert "trusted-handoff/pr_comment.md" in generated
     assert "downloaded-evidence/reports/handoff/pr_comment.md" not in generated
+    assert "const root = 'downloaded-evidence/benchmarks/';" in generated
+    assert "downloaded-evidence/reports/benchmarks/" not in generated
+    assert "--baseline downloaded-evidence/benchmarks/baseline.json" in generated
+    assert "--current downloaded-evidence/benchmarks/current.json" in generated
+    assert "fs.readFileSync('downloaded-evidence/benchmarks/provenance.json', 'utf8')" in generated
     assert "<!-- codex-benchmark-guardian:pr-gate -->" in generated
     assert "item.body && item.body.includes(marker)" in generated
     assert "updateComment" in generated and "createComment" in generated
