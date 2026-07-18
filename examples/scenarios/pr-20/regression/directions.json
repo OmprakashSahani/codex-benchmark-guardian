@@ -1,0 +1,6 @@
+{
+  "comparison_latency_ms": "higher_is_worse",
+  "comparison_throughput_metrics_per_second": "lower_is_worse",
+  "pr_gate_generation_latency_ms": "higher_is_worse",
+  "report_generation_latency_ms": "higher_is_worse"
+}

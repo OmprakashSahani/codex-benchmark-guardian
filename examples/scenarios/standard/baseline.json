@@ -1,0 +1,6 @@
+{
+  "latency_ms": 100.0,
+  "memory_mb": 256.0,
+  "runtime_s": 2.5,
+  "throughput_rps": 1000.0
+}

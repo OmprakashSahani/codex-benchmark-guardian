@@ -1,0 +1,6 @@
+{
+  "comparison_latency_ms": 1.14531728,
+  "comparison_throughput_metrics_per_second": 436560.2516710479,
+  "pr_gate_generation_latency_ms": 2.6809987000000004,
+  "report_generation_latency_ms": 4.45235926
+}
