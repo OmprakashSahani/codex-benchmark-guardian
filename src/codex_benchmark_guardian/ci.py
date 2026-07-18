@@ -215,12 +215,14 @@ jobs:
       - name: Measure protected base
         run: |
           mkdir -p paired-results/base
+          install -m 0666 /dev/null paired-results/base/baseline.json
           RUNTIME_IMAGE_ID="$(cat runtime-image-id.txt)"
           test -n "$RUNTIME_IMAGE_ID"
           docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 -v "$PWD/benchmark-harness:/harness:ro" -v "$PWD/paired-results/base:/out" --cpus 2 --memory 2g "$RUNTIME_IMAGE_ID" python /harness/run_project_benchmarks.py --output /out/baseline.json --benchmark-mode full-pr-gate --workload-size 500 --iterations 7 --warmups 2 --operation-repetitions 50
       - name: Measure PR head
         run: |
           mkdir -p paired-results/current
+          install -m 0666 /dev/null paired-results/current/current.json
           RUNTIME_IMAGE_ID="$(cat runtime-image-id.txt)"
           test -n "$RUNTIME_IMAGE_ID"
           docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 -v "$PWD/benchmark-harness:/harness:ro" -v "$PWD/pr-head:/pr-head:ro" -v "$PWD/paired-results/current:/out" --cpus 2 --memory 2g "$RUNTIME_IMAGE_ID" sh -c 'python -m pip install --no-deps --no-build-isolation /pr-head && python /harness/run_project_benchmarks.py --output /out/current.json --benchmark-mode full-pr-gate --workload-size 500 --iterations 7 --warmups 2 --operation-repetitions 50'
