@@ -226,3 +226,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local Vercel and Python build artifacts
+.vercel/
+_uv/
+.python-version
