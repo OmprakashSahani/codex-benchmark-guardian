@@ -212,6 +212,48 @@ def test_pr_gate_precreates_writable_container_output_files() -> None:
     assert "chmod 0777" not in workflow
 
 
+def test_pr_gate_installs_pr_head_from_writable_copy_without_weakening_isolation() -> None:
+    from codex_benchmark_guardian.ci import generate_pr_gate_workflow
+
+    workflow = generate_pr_gate_workflow()
+    measure_pr_head = workflow.split("      - name: Measure PR head\n", 1)[1].split(
+        "      - name: Write measurement provenance\n", 1
+    )[0]
+
+    temporary_copy = 'tmpdir="$(mktemp -d)"'
+    copy_source = 'cp -R /pr-head/. "$tmpdir"'
+    install_copy = 'python -m pip install --no-deps --no-build-isolation "$tmpdir"'
+    protected_benchmark = "python /harness/run_project_benchmarks.py"
+
+    assert '-v "$PWD/pr-head:/pr-head:ro"' in measure_pr_head
+    assert '-v "$PWD/benchmark-harness:/harness:ro"' in measure_pr_head
+    assert temporary_copy in measure_pr_head
+    assert copy_source in measure_pr_head
+    assert install_copy in measure_pr_head
+    assert "pip install --no-deps --no-build-isolation /pr-head" not in measure_pr_head
+    assert (
+        measure_pr_head.index(temporary_copy)
+        < measure_pr_head.index(copy_source)
+        < measure_pr_head.index(install_copy)
+        < measure_pr_head.index(protected_benchmark)
+    )
+    for security_control in (
+        "pull_request_target:",
+        "contents: read",
+        "--network none",
+        "--cap-drop ALL",
+        "--security-opt no-new-privileges",
+        "--pids-limit 256",
+        "--cpus 2",
+        "--memory 2g",
+    ):
+        assert security_control in workflow
+    assert "secrets." not in workflow
+    assert "path: protected-base" in workflow
+    assert '"harness_source":"protected-base"' in workflow
+    assert 'p["evaluator_source"]="protected-base"' in workflow
+
+
 def test_pr_gate_publisher_is_trusted_and_regenerates_comment() -> None:
     from codex_benchmark_guardian.ci import generate_pr_gate_publisher_workflow
 
