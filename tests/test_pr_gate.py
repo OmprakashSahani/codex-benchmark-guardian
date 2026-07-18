@@ -43,6 +43,23 @@ def test_comments_include_marker_regressions_and_escape_tables() -> None:
     assert "make format-check" in comment
 
 
+def test_comment_preserves_distinct_results_with_repeated_metric_names() -> None:
+    first = RegressionResult(
+        "latency_ms", 100, 125, 25, 10, True, "high", MetricDirection.HIGHER_IS_WORSE
+    )
+    second = RegressionResult(
+        "latency_ms", 200, 300, 50, 10, True, "critical", MetricDirection.HIGHER_IS_WORSE
+    )
+
+    comment = generate_pr_comment([first, second])
+
+    first_row = "| latency_ms | higher_is_worse | 100 | 125 | 25.00% | high |"
+    second_row = "| latency_ms | higher_is_worse | 200 | 300 | 50.00% | critical |"
+    assert comment.count(first_row) == 1
+    assert comment.count(second_row) == 1
+    assert comment.index(first_row) < comment.index(second_row)
+
+
 def test_ready_comment_is_concise_success() -> None:
     comment = generate_pr_comment([result("latency_ms")])
     assert "Benchmark gate passed" in comment
