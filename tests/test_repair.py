@@ -284,7 +284,8 @@ def test_repair_contract_json_is_deterministic_with_expected_shape() -> None:
 
 
 def test_codex_repair_goal_is_bounded_and_iterative() -> None:
-    goal = generate_codex_repair_goal(_mixed_results())
+    results = _mixed_results()
+    goal = generate_codex_repair_goal(results)
 
     assert "## Current Benchmark Decision" in goal
     assert "## Regressed Metrics" in goal
@@ -296,17 +297,34 @@ def test_codex_repair_goal_is_bounded_and_iterative() -> None:
     assert "## Required Validation" in goal
     assert "## Finish Conditions" in goal
     assert "## Stop-and-Report Conditions" in goal
-    assert "Inspect, repair, review, validate, and repeat" in goal
+    assert (
+        "Inspect, repair, review, validate, and repeat until every finish condition passes "
+        "or a stop-and-report condition applies. Do not prescribe or force a code change "
+        "without evidence."
+    ) in goal
     assert "memory_mb" not in goal
+    assert goal == generate_codex_repair_goal(results)
 
 
 def test_codex_repair_goal_without_regressions_requires_no_change() -> None:
-    goal = generate_codex_repair_goal([_mixed_results()[1]])
+    results = [_mixed_results()[1]]
+    goal = generate_codex_repair_goal(results)
 
     assert "**Repair required:** No" in goal
     assert "| None |" in goal
     assert "No repair is required" in goal
     assert "No speculative code change is made" in goal
+    assert "Inspect, repair, review, validate, and repeat" not in goal
+    assert (
+        "Inspect and verify the supplied protected evidence without making speculative code "
+        "or test changes. Confirm the protected workflow or trusted evaluator completed "
+        "successfully and that protected evidence reports zero material regressions and "
+        "Ready. Preserve human approval before merge. Report that no code repair is required, "
+        "and continue monitoring benchmark stability."
+    ) in goal
+    assert "Implement a minimal maintainable correction" not in goal
+    assert "Add or update regression tests" not in goal
+    assert goal == generate_codex_repair_goal(results)
 
 
 @pytest.mark.parametrize(

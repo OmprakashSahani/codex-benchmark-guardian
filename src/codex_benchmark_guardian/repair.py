@@ -278,12 +278,19 @@ def generate_codex_repair_goal(
     )
     lines.extend(_bullet_section("Finish Conditions", contract.completion_criteria))
     lines.extend(_bullet_section("Stop-and-Report Conditions", contract.stop_conditions))
-    lines.extend(
-        [
+    if contract.repair_required:
+        final_instruction = (
             "Inspect, repair, review, validate, and repeat until every finish condition "
             "passes or a stop-and-report condition applies. Do not prescribe or force a "
-            "code change without evidence.",
-            "",
-        ]
-    )
+            "code change without evidence."
+        )
+    else:
+        final_instruction = (
+            "Inspect and verify the supplied protected evidence without making speculative "
+            "code or test changes. Confirm the protected workflow or trusted evaluator "
+            "completed successfully and that protected evidence reports zero material "
+            "regressions and Ready. Preserve human approval before merge. Report that no "
+            "code repair is required, and continue monitoring benchmark stability."
+        )
+    lines.extend([final_instruction, ""])
     return "\n".join(lines)
