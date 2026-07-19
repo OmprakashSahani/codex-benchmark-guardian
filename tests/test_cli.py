@@ -553,6 +553,9 @@ def test_handoff_pack_command_creates_all_expected_files(tmp_path) -> None:
         "release_readiness.md",
         "pr_comment.md",
         "gate_summary.json",
+        "repair_contract.md",
+        "repair_contract.json",
+        "codex_repair_goal.md",
     }
     assert {path.name for path in output_dir.iterdir()} == expected_files
     issue = (output_dir / "github_issue.md").read_text(encoding="utf-8")
@@ -565,6 +568,11 @@ def test_handoff_pack_command_creates_all_expected_files(tmp_path) -> None:
     readiness = (output_dir / "release_readiness.md").read_text(encoding="utf-8")
     assert "**Readiness:** Block" in readiness
     assert "**Score:** 50/100" in readiness
+    repair_contract = json.loads((output_dir / "repair_contract.json").read_text(encoding="utf-8"))
+    assert repair_contract["regression_count"] == 2
+    assert repair_contract["readiness_label"] == "Block"
+    assert (output_dir / "repair_contract.md").exists()
+    assert (output_dir / "codex_repair_goal.md").exists()
 
 
 def test_handoff_pack_command_works_without_directions_config(tmp_path, monkeypatch) -> None:

@@ -16,6 +16,12 @@ from codex_benchmark_guardian.pr_gate import (
 )
 from codex_benchmark_guardian.regression import MetricDirection
 from codex_benchmark_guardian.release_readiness import generate_release_readiness_markdown
+from codex_benchmark_guardian.repair import (
+    build_repair_contract,
+    generate_codex_repair_goal,
+    generate_repair_contract_json,
+    generate_repair_contract_markdown,
+)
 from codex_benchmark_guardian.report import (
     generate_codex_fix_prompt,
     generate_github_issue,
@@ -58,6 +64,9 @@ class HandoffPackPaths:
     release_readiness: Path
     pr_comment: Path
     gate_summary: Path
+    repair_contract: Path
+    repair_contract_json: Path
+    codex_repair_goal: Path
 
 
 def generate_handoff_pack(
@@ -103,6 +112,9 @@ def generate_handoff_pack(
         release_readiness=output_dir / "release_readiness.md",
         pr_comment=output_dir / "pr_comment.md",
         gate_summary=output_dir / "gate_summary.json",
+        repair_contract=output_dir / "repair_contract.md",
+        repair_contract_json=output_dir / "repair_contract.json",
+        codex_repair_goal=output_dir / "codex_repair_goal.md",
     )
     paths.report.write_text(generate_markdown_report(results), encoding="utf-8")
     paths.html_report.write_text(generate_html_report(results), encoding="utf-8")
@@ -114,6 +126,16 @@ def generate_handoff_pack(
     gate_summary = build_pr_gate_summary(results)
     paths.pr_comment.write_text(generate_pr_comment(results, gate_summary), encoding="utf-8")
     paths.gate_summary.write_text(generate_gate_summary_json(gate_summary), encoding="utf-8")
+    repair_contract = build_repair_contract(results)
+    paths.repair_contract.write_text(
+        generate_repair_contract_markdown(repair_contract), encoding="utf-8"
+    )
+    paths.repair_contract_json.write_text(
+        generate_repair_contract_json(repair_contract), encoding="utf-8"
+    )
+    paths.codex_repair_goal.write_text(
+        generate_codex_repair_goal(repair_contract), encoding="utf-8"
+    )
     paths.ci_workflow.write_text(
         generate_github_actions_workflow(
             baseline_path=baseline_path,
