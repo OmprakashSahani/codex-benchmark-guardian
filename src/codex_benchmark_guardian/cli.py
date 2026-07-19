@@ -262,6 +262,9 @@ def handoff_pack(
     console.print(f"Release readiness written to: {paths.release_readiness}")
     console.print(f"PR comment written to: {paths.pr_comment}")
     console.print(f"Gate summary written to: {paths.gate_summary}")
+    console.print(f"Repair contract Markdown written to: {paths.repair_contract}")
+    console.print(f"Repair contract JSON written to: {paths.repair_contract_json}")
+    console.print(f"Codex repair goal written to: {paths.codex_repair_goal}")
 
 
 @app.command("compare-files")
