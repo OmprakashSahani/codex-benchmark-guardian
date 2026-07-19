@@ -8,6 +8,7 @@ function tone(label: AnalysisResponse["release_readiness_label"]) {
 
 export function DecisionSummary({ result }: { result: AnalysisResponse }) {
   const statusTone = tone(result.release_readiness_label);
+  const repairRequired = result.repair_contract.repair_required;
   const StatusIcon = result.should_block ? ShieldAlert : result.regression_count ? AlertTriangle : CheckCircle2;
   const score = Math.max(0, Math.min(100, result.release_readiness_score));
   return <Card className={`decision-summary decision-${statusTone}`}>
@@ -15,6 +16,10 @@ export function DecisionSummary({ result }: { result: AnalysisResponse }) {
       <div className="decision-label"><Badge tone={statusTone}><StatusIcon size={13} />{result.release_readiness_label}</Badge><span>Release decision</span></div>
       <h2>{result.recommendation}</h2>
       <p>Deterministic assessment from the Python benchmark engine.</p>
+      <div className={`repair-state ${repairRequired ? "repair-state-required" : "repair-state-verify"}`}>
+        <strong>{repairRequired ? "Repair required" : "Verification only"}</strong>
+        {!repairRequired && <span>No code repair required</span>}
+      </div>
       <dl className="decision-facts">
         <div><dt>Compared metrics</dt><dd>{result.compared_metric_count}</dd></div>
         <div><dt>Regressions</dt><dd>{result.regression_count}</dd></div>
