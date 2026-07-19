@@ -32,11 +32,19 @@ FORBIDDEN_ACTIONS = (
     "Lower or bypass regression thresholds.",
     "Change metric directions to suppress failures.",
     (
-        "Modify, replace, rewrite, regenerate, or select different trusted benchmark "
-        "evidence merely to obtain a passing result, including protected baseline evidence, "
-        "trusted-harness benchmark fixtures, provenance, protected evaluator inputs, or "
-        "committed metric-direction policy. Legitimate evidence collection by the protected "
-        "harness remains allowed."
+        "Modify, replace, rewrite, or selectively manipulate the supplied benchmark evidence "
+        "that triggered this contract, including its protected baseline and provenance."
+    ),
+    (
+        "Manually author, edit after generation, substitute from another run, or selectively "
+        "choose protected verification evidence merely to obtain a passing result. Fresh "
+        "verification evidence may only be produced by the protected workflow or trusted "
+        "evaluator."
+    ),
+    (
+        "Regenerate verification evidence using a modified protected harness, trusted "
+        "evaluator, thresholds, metric directions, protected baseline or provenance, or "
+        "committed policy inputs."
     ),
     "Weaken or bypass the protected benchmark harness.",
     "Weaken or bypass the protected evaluator.",
@@ -55,27 +63,42 @@ REQUIRED_VALIDATION_COMMANDS = (
 )
 REGRESSION_COMPLETION_CRITERIA = (
     "All required project checks pass.",
-    "The relevant benchmark rerun succeeds.",
     "The relevant protected benchmark workflow or trusted evaluator completes successfully.",
-    "Protected evidence reports zero material regressions.",
-    "Protected evidence reports readiness as Ready.",
     (
-        "The protected harness, evaluator, thresholds, metric directions, and trusted "
-        "evidence remain unchanged."
+        "Fresh protected verification evidence is produced by that protected workflow or "
+        "trusted evaluator; it may differ from the supplied original failing evidence."
+    ),
+    "The fresh protected verification evidence reports zero material regressions.",
+    "The fresh protected verification evidence reports readiness as Ready.",
+    (
+        "The protected harness, trusted evaluator, thresholds, metric directions, protected "
+        "baseline and its provenance, and committed policy inputs remain unchanged."
+    ),
+    (
+        "The supplied original failing evidence remains preserved as historical input and is "
+        "not edited, rewritten, replaced, or selectively manipulated."
     ),
     "The final diff is reviewed.",
     "Human approval remains required before merge.",
 )
 NO_REPAIR_COMPLETION_CRITERIA = (
-    "No speculative code change is made.",
+    "No speculative code or test change is made.",
     "Benchmark stability continues to be monitored.",
     "All required project checks pass.",
     "The relevant protected benchmark workflow or trusted evaluator completes successfully.",
-    "Protected evidence reports zero material regressions.",
-    "Protected evidence reports readiness as Ready.",
     (
-        "The protected harness, evaluator, thresholds, metric directions, and trusted "
-        "evidence remain unchanged."
+        "Fresh protected verification evidence is produced only by the protected workflow or "
+        "trusted evaluator."
+    ),
+    "The fresh protected verification evidence reports zero material regressions.",
+    "The fresh protected verification evidence reports readiness as Ready.",
+    (
+        "The protected harness, trusted evaluator, thresholds, metric directions, protected "
+        "baseline and its provenance, and committed policy inputs remain unchanged."
+    ),
+    (
+        "The supplied original evidence remains preserved as historical input and is not "
+        "edited, rewritten, replaced, or selectively manipulated."
     ),
     "The final diff is reviewed if changes were made.",
     "Human approval remains required before merge.",

@@ -160,9 +160,13 @@ def test_no_repair_completion_still_requires_protected_verification() -> None:
     assert contract.repair_required is False
     assert "required project checks pass" in completion
     assert "protected benchmark workflow or trusted evaluator completes successfully" in completion
-    assert "Protected evidence reports zero material regressions" in completion
-    assert "Protected evidence reports readiness as Ready" in completion
-    assert "trusted evidence remain unchanged" in completion
+    assert "Fresh protected verification evidence is produced only" in completion
+    assert "fresh protected verification evidence reports zero material regressions" in completion
+    assert "fresh protected verification evidence reports readiness as Ready" in completion
+    assert "protected baseline and its provenance" in completion
+    assert "committed policy inputs remain unchanged" in completion
+    assert "supplied original evidence remains preserved as historical input" in completion
+    assert "not edited, rewritten, replaced, or selectively manipulated" in completion
     assert "final diff is reviewed if changes were made" in completion
     assert "Human approval remains required before merge" in completion
 
@@ -171,15 +175,59 @@ def test_trusted_evidence_prohibition_is_unconditional_and_complete() -> None:
     contract = build_repair_contract(_mixed_results())
     forbidden = " ".join(contract.forbidden_actions)
 
-    assert "after measurement" not in forbidden
-    assert "Modify, replace, rewrite, regenerate, or select different" in forbidden
+    assert "Modify, replace, rewrite, or selectively manipulate" in forbidden
+    assert "supplied benchmark evidence that triggered this contract" in forbidden
+    assert "Manually author, edit after generation, substitute from another run" in forbidden
+    assert "selectively choose protected verification evidence" in forbidden
     assert "merely to obtain a passing result" in forbidden
-    assert "protected baseline evidence" in forbidden
-    assert "trusted-harness benchmark fixtures" in forbidden
+    assert "protected baseline" in forbidden
     assert "provenance" in forbidden
-    assert "protected evaluator inputs" in forbidden
-    assert "committed metric-direction policy" in forbidden
-    assert "Legitimate evidence collection by the protected harness remains allowed" in forbidden
+    assert "modified protected harness" in forbidden
+    assert "trusted evaluator" in forbidden
+    assert "thresholds" in forbidden
+    assert "metric directions" in forbidden
+    assert "committed policy inputs" in forbidden
+    assert "may only be produced by the protected workflow or trusted evaluator" in forbidden
+
+
+def test_repair_completion_separates_original_and_fresh_protected_evidence() -> None:
+    contract = build_repair_contract(_mixed_results())
+    completion = " ".join(contract.completion_criteria)
+
+    assert contract.repair_required is True
+    assert "All required project checks pass" in completion
+    assert "protected benchmark workflow or trusted evaluator completes successfully" in completion
+    assert "Fresh protected verification evidence is produced by that" in completion
+    assert "may differ from the supplied original failing evidence" in completion
+    assert "fresh protected verification evidence reports zero material regressions" in completion
+    assert "fresh protected verification evidence reports readiness as Ready" in completion
+    assert "protected baseline and its provenance" in completion
+    assert "committed policy inputs remain unchanged" in completion
+    assert "supplied original failing evidence remains preserved as historical input" in completion
+    assert "not edited, rewritten, replaced, or selectively manipulated" in completion
+    assert "The final diff is reviewed" in completion
+    assert "Human approval remains required before merge" in completion
+    assert "trusted evidence remain unchanged" not in completion
+
+
+def test_fresh_verification_policy_is_deterministic_in_every_contract_output() -> None:
+    results = _mixed_results()
+    contract = build_repair_contract(results)
+    expected = (
+        "Fresh protected verification evidence is produced by that protected workflow or "
+        "trusted evaluator; it may differ from the supplied original failing evidence."
+    )
+
+    markdown = generate_repair_contract_markdown(results)
+    contract_json = generate_repair_contract_json(results)
+    goal = generate_codex_repair_goal(results)
+
+    assert markdown == generate_repair_contract_markdown(contract)
+    assert contract_json == generate_repair_contract_json(contract)
+    assert goal == generate_codex_repair_goal(contract)
+    assert f"- {expected}" in markdown
+    assert expected in json.loads(contract_json)["completion_criteria"]
+    assert f"- {expected}" in goal
 
 
 def test_no_repair_markdown_and_json_are_deterministic_with_protected_finish_line() -> None:
@@ -195,7 +243,7 @@ def test_no_repair_markdown_and_json_are_deterministic_with_protected_finish_lin
     assert contract_json == generate_repair_contract_json(contract)
     assert "No repair is required" in contract_markdown
     assert "protected benchmark workflow or trusted evaluator" in contract_markdown
-    assert "Protected evidence reports readiness as Ready" in goal_markdown
+    assert "fresh protected verification evidence reports readiness as Ready" in goal_markdown
     assert json.loads(contract_json)["completion_criteria"] == list(contract.completion_criteria)
 
 
@@ -213,7 +261,7 @@ def test_contract_contains_validation_safety_completion_and_stop_boundaries() ->
     forbidden = " ".join(contract.forbidden_actions).lower()
     assert "threshold" in forbidden
     assert "metric directions" in forbidden
-    assert "trusted benchmark evidence" in forbidden
+    assert "supplied benchmark evidence" in forbidden
     assert "protected benchmark harness" in forbidden
     assert "protected evaluator" in forbidden
     assert "hard-code" in forbidden
@@ -313,7 +361,7 @@ def test_codex_repair_goal_without_regressions_requires_no_change() -> None:
     assert "**Repair required:** No" in goal
     assert "| None |" in goal
     assert "No repair is required" in goal
-    assert "No speculative code change is made" in goal
+    assert "No speculative code or test change is made" in goal
     assert "Inspect, repair, review, validate, and repeat" not in goal
     assert (
         "Inspect and verify the supplied protected evidence without making speculative code "
