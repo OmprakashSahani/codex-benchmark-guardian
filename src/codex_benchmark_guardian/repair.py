@@ -10,7 +10,7 @@ from html import escape
 from codex_benchmark_guardian.regression import RegressionResult
 from codex_benchmark_guardian.release_readiness import calculate_release_readiness
 
-ALLOWED_ACTIONS = (
+REGRESSION_REPAIR_ALLOWED_ACTIONS = (
     "Inspect relevant implementation and history.",
     "Identify evidence-backed root-cause hypotheses.",
     "Implement a minimal maintainable correction.",
@@ -18,6 +18,15 @@ ALLOWED_ACTIONS = (
     "Run approved project checks.",
     "Rerun the relevant benchmark.",
     "Review the final diff.",
+)
+NO_REPAIR_ALLOWED_ACTIONS = (
+    "Inspect the supplied benchmark evidence.",
+    "Confirm the protected workflow or trusted evaluator completed successfully.",
+    "Confirm protected evidence reports zero material regressions and Ready.",
+    "Review measurement stability and noise without changing protected policy.",
+    "Review the final diff only when changes already exist.",
+    "Report that no code repair is required.",
+    "Continue monitoring benchmark stability.",
 )
 FORBIDDEN_ACTIONS = (
     "Lower or bypass regression thresholds.",
@@ -163,7 +172,9 @@ def build_repair_contract(results: Sequence[RegressionResult]) -> RepairContract
         readiness_label=readiness.label.value,
         regressed_metrics=evidence,
         repair_objective=REGRESSION_OBJECTIVE if repair_required else NO_REPAIR_OBJECTIVE,
-        allowed_actions=ALLOWED_ACTIONS,
+        allowed_actions=(
+            REGRESSION_REPAIR_ALLOWED_ACTIONS if repair_required else NO_REPAIR_ALLOWED_ACTIONS
+        ),
         forbidden_actions=FORBIDDEN_ACTIONS,
         required_validation_commands=REQUIRED_VALIDATION_COMMANDS,
         completion_criteria=(

@@ -78,6 +78,81 @@ def test_build_no_regression_contract_prohibits_speculative_repairs() -> None:
     assert "monitoring benchmark stability" in contract.repair_objective
 
 
+def test_no_repair_allowed_actions_exclude_implementation_and_test_changes() -> None:
+    contract = build_repair_contract([_mixed_results()[1]])
+    allowed = " ".join(contract.allowed_actions).lower()
+
+    assert contract.repair_required is False
+    assert "implement" not in allowed
+    assert "correction" not in allowed
+    assert "add or update regression tests" not in allowed
+    assert "test" not in allowed
+
+
+def test_no_repair_allowed_actions_discourage_speculative_changes_and_permit_verification() -> None:
+    contract = build_repair_contract([_mixed_results()[1]])
+    allowed = " ".join(contract.allowed_actions)
+    no_repair_text = " ".join([contract.repair_objective, *contract.completion_criteria])
+
+    assert "no speculative code change" in no_repair_text.lower()
+    assert "Inspect the supplied benchmark evidence" in allowed
+    assert "protected workflow or trusted evaluator completed successfully" in allowed
+    assert "zero material regressions and Ready" in allowed
+    assert "measurement stability and noise without changing protected policy" in allowed
+    assert "Review the final diff only when changes already exist" in allowed
+    assert "Report that no code repair is required" in allowed
+    assert "Continue monitoring benchmark stability" in allowed
+
+
+def test_regression_allowed_actions_retain_repair_steps() -> None:
+    contract = build_repair_contract(_mixed_results())
+
+    assert contract.repair_required is True
+    assert contract.allowed_actions == (
+        "Inspect relevant implementation and history.",
+        "Identify evidence-backed root-cause hypotheses.",
+        "Implement a minimal maintainable correction.",
+        "Add or update regression tests.",
+        "Run approved project checks.",
+        "Rerun the relevant benchmark.",
+        "Review the final diff.",
+    )
+
+
+def test_no_repair_outputs_use_deterministic_safe_allowed_actions() -> None:
+    results = [_mixed_results()[1]]
+    contract = build_repair_contract(results)
+    expected_actions = [
+        "Inspect the supplied benchmark evidence.",
+        "Confirm the protected workflow or trusted evaluator completed successfully.",
+        "Confirm protected evidence reports zero material regressions and Ready.",
+        "Review measurement stability and noise without changing protected policy.",
+        "Review the final diff only when changes already exist.",
+        "Report that no code repair is required.",
+        "Continue monitoring benchmark stability.",
+    ]
+
+    contract_markdown = generate_repair_contract_markdown(results)
+    goal_markdown = generate_codex_repair_goal(results)
+    contract_json = generate_repair_contract_json(results)
+
+    assert list(contract.allowed_actions) == expected_actions
+    assert contract_markdown == generate_repair_contract_markdown(contract)
+    assert goal_markdown == generate_codex_repair_goal(contract)
+    assert contract_json == generate_repair_contract_json(contract)
+    assert json.loads(contract_json)["allowed_actions"] == expected_actions
+    for action in expected_actions:
+        assert f"- {action}" in contract_markdown
+        assert f"- {action}" in goal_markdown
+    for prohibited in (
+        "Implement a minimal maintainable correction.",
+        "Add or update regression tests.",
+    ):
+        assert prohibited not in contract_markdown
+        assert prohibited not in goal_markdown
+        assert prohibited not in contract_json
+
+
 def test_no_repair_completion_still_requires_protected_verification() -> None:
     contract = build_repair_contract([_mixed_results()[1]])
     completion = " ".join(contract.completion_criteria)
