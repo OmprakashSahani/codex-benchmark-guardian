@@ -15,7 +15,7 @@ const tabs = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "metrics", label: "Metrics", icon: BarChart3 },
   { id: "triage", label: "Triage", icon: ClipboardList },
-  { id: "codex-fix", label: "Codex Fix", icon: Bot },
+  { id: "codex-fix", label: "Codex Goal", icon: Bot },
   { id: "handoff", label: "Handoff Pack", icon: FileCode2 },
 ] as const;
 type TabId = (typeof tabs)[number]["id"];
@@ -65,7 +65,7 @@ export function Results({ result }: { result: AnalysisResponse }) {
         <div className="tab-panel" id={panelId("overview")} role="tabpanel" aria-labelledby={tabId("overview")} tabIndex={0} hidden={selected !== "overview"}><MetricChangeChart metrics={result.metrics} /></div>
         <div className="tab-panel" id={panelId("metrics")} role="tabpanel" aria-labelledby={tabId("metrics")} tabIndex={0} hidden={selected !== "metrics"}><MetricsTable metrics={result.metrics} /></div>
         <div className="tab-panel" id={panelId("triage")} role="tabpanel" aria-labelledby={tabId("triage")} tabIndex={0} hidden={selected !== "triage"}><TriagePanel notes={result.triage_notes} /></div>
-        <div className="tab-panel" id={panelId("codex-fix")} role="tabpanel" aria-labelledby={tabId("codex-fix")} tabIndex={0} hidden={selected !== "codex-fix"}><CodexFixPanel prompt={result.codex_fix_prompt} /></div>
+        <div className="tab-panel" id={panelId("codex-fix")} role="tabpanel" aria-labelledby={tabId("codex-fix")} tabIndex={0} hidden={selected !== "codex-fix"}><CodexFixPanel result={result} /></div>
         <div className="tab-panel" id={panelId("handoff")} role="tabpanel" aria-labelledby={tabId("handoff")} tabIndex={0} hidden={selected !== "handoff"}><HandoffPack result={result} /></div>
       </Card>
     </section>

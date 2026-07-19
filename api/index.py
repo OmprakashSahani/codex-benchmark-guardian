@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Annotated, Literal
 
 from fastapi import FastAPI, Request
@@ -15,6 +16,12 @@ from codex_benchmark_guardian.ci import (
 from codex_benchmark_guardian.pr_gate import build_pr_gate_summary
 from codex_benchmark_guardian.regression import MetricDirection
 from codex_benchmark_guardian.release_readiness import generate_release_readiness_markdown
+from codex_benchmark_guardian.repair import (
+    build_repair_contract,
+    generate_codex_repair_goal,
+    generate_repair_contract_json,
+    generate_repair_contract_markdown,
+)
 from codex_benchmark_guardian.report import (
     generate_codex_fix_prompt,
     generate_github_issue,
@@ -119,6 +126,8 @@ async def analyze(payload: AnalyzeRequest) -> dict[str, object]:
     )
     summary = build_pr_gate_summary(results)
     triage = generate_triage_notes(results)
+    repair_contract = build_repair_contract(results)
+    repair_contract_json = generate_repair_contract_json(repair_contract)
     workflow_context = select_dashboard_workflow_context(
         use_sample_data=payload.use_sample_data,
         has_directions_upload=payload.directions is not None,
@@ -166,4 +175,8 @@ async def analyze(payload: AnalyzeRequest) -> dict[str, object]:
         "github_issue": generate_github_issue(results),
         "ci_workflow": workflow,
         "release_readiness_markdown": generate_release_readiness_markdown(results),
+        "repair_contract": json.loads(repair_contract_json),
+        "repair_contract_markdown": generate_repair_contract_markdown(repair_contract),
+        "repair_contract_json": repair_contract_json,
+        "codex_repair_goal": generate_codex_repair_goal(repair_contract),
     }
