@@ -90,7 +90,7 @@ Users can:
 
 The dashboard defaults to a **10%** regression threshold. This repository's protected PR gate uses **25%** to evaluate pull requests.
 
-Until a new submission video is recorded, the production dashboard is the primary demo. The existing [YouTube video](https://youtu.be/MLPgfpz6Vb0) is an earlier prototype demonstration and does not represent the current production experience.
+Until a new submission video is recorded, the production dashboard is the primary demo. The existing [YouTube video](https://youtu.be/nw5s-3TwPQY) is an earlier prototype demonstration and does not represent the current production experience.
 
 ## Verified Repair Loop
 
