@@ -221,31 +221,97 @@ The CLI currently retains `codex_fix_prompt.md` in a generated verification-only
 
 ## Architecture
 
-The production application uses the **Next.js 15 App Router**, **TypeScript**, and **Tailwind CSS** for presentation, with **FastAPI** exposing the deterministic Python engine. Streamlit remains available as an additional local interface.
+The production system is organized around explicit trust boundaries. The **Next.js 15 App Router**, **TypeScript**, and **Tailwind CSS** provide the primary product experience; **FastAPI** exposes the deterministic Python engine; the CLI and Streamlit reuse the same core directly. Benchmark comparison, readiness scoring, triage, and repair policy remain centralized in Python.
 
 ```mermaid
 flowchart TB
-    U[User] --> N[Next.js 15 dashboard<br/>TypeScript and Tailwind CSS]
-    U --> S[Streamlit local interface]
-    U --> C[CLI]
-    N --> A[FastAPI API]
-    A --> P
-    S --> P
-    C --> P
+    EVIDENCE["Benchmark evidence<br/>baseline · current · directions · threshold"]
 
-    subgraph P[Deterministic Python engine: only policy source of truth]
-        E[Comparison engine] --> R[Regression classification]
-        R --> D[Readiness scoring]
-        R --> T[Triage generation]
-        D --> RC[Repair Contract generation]
-        T --> RC
-        RC --> H[Reports and handoff generation]
+    subgraph INTERFACES["Product interfaces"]
+        direction LR
+        WEB["Next.js 15 dashboard<br/>TypeScript · Tailwind CSS"]
+        API["FastAPI<br/>POST /api/analyze"]
+        CLI["Python CLI"]
+        ST["Streamlit<br/>local Python interface"]
+        WEB --> API
     end
 
-    H --> G[Protected GitHub PR gate]
-    G --> V[Protected benchmark verification]
-    V --> M[Human review and merge decision]
+    subgraph CORE["Trusted Python core — only policy source of truth"]
+        direction LR
+        CMP["Benchmark<br/>comparison"] --> REG["Regression<br/>classification"]
+        REG --> READY["Release-readiness<br/>scoring"]
+        REG --> TRIAGE["Deterministic<br/>triage"]
+        READY --> CONTRACT["Immutable<br/>Repair Contract"]
+        TRIAGE --> CONTRACT
+        CONTRACT --> GOAL["Conditional<br/>Codex Goal"]
+        CONTRACT --> PACK["Reports and<br/>Handoff Pack"]
+    end
+
+    subgraph EXECUTION["Bounded execution"]
+        direction LR
+        ROUTE{"Repair<br/>required?"}
+        REPAIR["Minimal evidence-backed repair<br/>plus regression tests"]
+        VERIFY["Verification only<br/>no speculative changes"]
+        CHECKS["Approved<br/>project checks"]
+        ROUTE -->|Yes| REPAIR
+        ROUTE -->|No| VERIFY
+        REPAIR --> CHECKS
+        VERIFY --> CHECKS
+    end
+
+    subgraph PROTECTED["Protected verification boundary"]
+        direction LR
+        HARNESS["Protected-base harness<br/>controls what is measured"]
+        EVALUATOR["Protected-base evaluator<br/>controls readiness"]
+        DECISION{"Zero material regressions<br/>and Ready?"}
+        HARNESS --> EVALUATOR --> DECISION
+    end
+
+    HUMAN["Human review<br/>and approval"]
+    MERGE["Merge"]
+
+    EVIDENCE --> WEB
+    EVIDENCE --> CLI
+    EVIDENCE --> ST
+    API --> CMP
+    CLI --> CMP
+    ST --> CMP
+    GOAL --> ROUTE
+    PACK -.-> ROUTE
+    CHECKS --> HARNESS
+    DECISION -->|No| CONTRACT
+    DECISION -->|Yes| HUMAN --> MERGE
+
+    classDef evidence fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:1.5px;
+    classDef interface fill:#eff6ff,stroke:#2563eb,color:#172554,stroke-width:1.5px;
+    classDef api fill:#ecfeff,stroke:#0891b2,color:#164e63,stroke-width:1.5px;
+    classDef core fill:#f0fdf4,stroke:#16a34a,color:#14532d,stroke-width:1.5px;
+    classDef contract fill:#fff7ed,stroke:#ea580c,color:#7c2d12,stroke-width:2px;
+    classDef execution fill:#faf5ff,stroke:#9333ea,color:#581c87,stroke-width:1.5px;
+    classDef protected fill:#fef2f2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px;
+    classDef human fill:#fdf4ff,stroke:#c026d3,color:#701a75,stroke-width:2px;
+
+    class EVIDENCE evidence;
+    class WEB,CLI,ST interface;
+    class API api;
+    class CMP,REG,READY,TRIAGE core;
+    class CONTRACT,GOAL,PACK contract;
+    class ROUTE,REPAIR,VERIFY,CHECKS execution;
+    class HARNESS,EVALUATOR,DECISION protected;
+    class HUMAN,MERGE human;
+
+    style INTERFACES fill:#f8fbff,stroke:#60a5fa,stroke-width:2px
+    style CORE fill:#f7fff9,stroke:#4ade80,stroke-width:2px
+    style EXECUTION fill:#fdfaff,stroke:#c084fc,stroke-width:2px
+    style PROTECTED fill:#fff8f8,stroke:#f87171,stroke-width:2px
 ```
+
+The diagram makes the authority boundaries explicit:
+
+- **Frontend and API adapters present results; they do not recalculate readiness or repair policy.**
+- **The Python core generates the immutable Repair Contract and conditional Codex Goal from benchmark evidence.**
+- **The protected-base harness controls measurement, and the protected-base evaluator controls benchmark readiness.**
+- **Only a human approves the final merge.**
 
 Benchmark rules, readiness scoring, and repair policy are not duplicated in TypeScript. The frontend renders API results from the Python source of truth.
 
@@ -315,30 +381,54 @@ Repositories adopting the generated gate should make `benchmark-pr-gate` a requi
 
 ## Built with Codex and GPT-5.6
 
+I used **Codex with GPT-5.6** throughout the project for implementation planning, focused code changes, testing, debugging, and review.
+
 ### Codex contributions
 
-Codex with GPT-5.6 helped with:
+Codex helped implement and refine:
 
-- implementation planning and focused code changes
-- test generation and refinement
-- API and frontend integration
-- review of security and compatibility edge cases
-- pull-request review
-- finding and fixing the verification-only legacy-prompt exposure
-- validating bounded Repair Contract behavior
+- JSON benchmark comparison and multi-metric regression detection
+- mixed metric-direction handling and severity classification
+- deterministic readiness scoring and regression triage guidance
+- Markdown and self-contained HTML benchmark reports
+- CLI commands and Codex Handoff Pack generation
+- GitHub issue, workflow, and pull-request artifact generation
+- Streamlit dashboard workflows
+- protected GitHub PR Benchmark Gate behavior
+- FastAPI analysis and Repair Contract integration
+- Next.js and TypeScript dashboard integration
+- permanent benchmark scenarios and real PR replay workflows
+- conditional repair-required and verification-only Codex Goals
+- unit, CLI, API, repair-contract, scenario, and PR-gate tests
+
+Codex reviews also helped identify and resolve edge cases involving:
+
+- passing and intentionally failing CI demonstrations
+- generated workflow paths and safe command quoting
+- mixed metric directions and relative, `./`, and absolute benchmark input paths
+- dashboard-generated CI YAML matching the selected evidence and policy inputs
+- deterministic structured and serialized Repair Contract outputs
+- inert rendering of untrusted metric names
+- protected benchmark evidence, harness, and evaluator boundaries
+- verification-only results exposing a speculative legacy fix prompt
+- stale artifact selection while switching from a repair result to a verification-only result
 
 ### Human design and approval
 
 The human developer defined and approved:
 
-- the product problem and readiness policy
-- the safety boundaries and protected evidence model
+- the product problem and overall system direction
+- the benchmark readiness policy and scoring behavior
+- the protected harness, evaluator, and evidence model
+- the safety boundaries for Codex-assisted repair
 - repair-required versus verification-only behavior
-- the user experience and scope decisions
+- the product scope and user experience
 - review acceptance and production deployment
-- final merge decisions
+- final pull-request merge decisions
 
-Codex assisted with implementation and review; it did not independently design, approve, deploy, or merge the project.
+Every Codex-assisted change was reviewed and validated using Ruff, Pytest, TypeScript checks, production builds, protected benchmark workflows, focused local Codex reviews, GitHub Codex reviews, and manual production verification.
+
+Codex assisted with implementation and review; it did not independently define the policy, approve its own work, declare a pull request Ready, deploy the application, or merge changes.
 
 ## Installation and Verification
 
