@@ -1,300 +1,210 @@
 <div align="center">
 
 # Codex Benchmark Guardian
-### Benchmark Regression Detection · Codex Handoff Automation · CI Performance Guardrails
+
+### Evidence-backed performance repair for pull requests
+
+[Production dashboard](https://codex-benchmark-guardian.vercel.app) · [Repository](https://github.com/OmprakashSahani/codex-benchmark-guardian) · [Real PR #20 proof](https://github.com/OmprakashSahani/codex-benchmark-guardian/pull/20)
 
 </div>
 
 ---
 
-**Codex Benchmark Guardian** is a Python developer tool that turns raw benchmark comparisons into an actionable engineering workflow.
+**Codex Benchmark Guardian turns a real performance regression into a bounded Codex repair task, verifies the proposed fix against protected benchmark evidence, and safely returns the pull request to Ready.**
 
-It helps developers:
+It connects deterministic benchmark analysis to a conditional repair workflow without allowing an agent to decide its own success. Python is the only source of benchmark, readiness, and repair-policy truth; the production Next.js dashboard and FastAPI API expose that engine without reimplementing its business rules.
 
-- Compare baseline and current benchmark results
-- Detect performance regressions across multiple metrics
-- Calculate a deterministic Benchmark Release Readiness Score for merge decisions
-- Explain likely causes with deterministic triage guidance
-- Generate Codex-ready investigation and fix prompts
-- Create GitHub issue handoff files
-- Generate GitHub Actions benchmark guardrails
-- Gate pull requests with persistent benchmark readiness comments
-- Review results through a CLI or interactive Streamlit dashboard
+The final merge remains a human decision.
 
-Built for **OpenAI Build Week**, the project connects benchmark analysis directly to developer follow-through:
+## Why It Matters
 
-**benchmark comparison → regression detection → triage guidance → Codex fix prompt → GitHub issue handoff → CI guardrail**
+A benchmark failure is only the start of a repair. A useful system must preserve the evidence, explain what regressed, constrain what may change, distinguish repair from verification, and prove the outcome with a trusted evaluator.
 
-No credentials, API keys, accounts, or external services are required.
+Codex Benchmark Guardian provides that chain:
 
----
+- deterministic comparison across higher-is-worse and lower-is-worse metrics
+- severity classification, readiness scoring, and evidence-backed triage
+- an immutable Repair Contract and a conditional Codex Goal
+- bounded repair instructions only when material regressions exist
+- a verification-only path that avoids speculative changes when evidence is clean
+- a protected GitHub PR gate that makes the final benchmark-readiness decision
+- a complete, portable Handoff Pack for review and automation
 
 ## Judge Quickstart
+
+Start with the [live production dashboard](https://codex-benchmark-guardian.vercel.app), then verify the repository locally:
 
 ```bash
 git clone https://github.com/OmprakashSahani/codex-benchmark-guardian.git
 cd codex-benchmark-guardian
-pip install -e ".[dev]"
+pip install -e ".[dev,dashboard]"
 make lint
 make format-check
 make test
+npm install
+npm run lint
+npm run typecheck
+npm run build
+```
+
+Expected Python test result:
+
+```text
+162 passed
+```
+
+Generate a CLI handoff and exercise both protected-gate outcomes:
+
+```bash
 make demo-handoff
 make demo-pr-gate-block
 make demo-pr-gate-ready
-make dashboard
 ```
 
-Expected results:
-
-- `make test` passes 86 tests when installed with the development dependencies in the complete test suite.
-- `make demo-handoff` generates the full Codex Handoff Pack under `reports/handoff/`.
-- The bundled sample detects **2 regressions**: `latency_ms` and `throughput_rps`.
-- The bundled handoff score is **50/100 — Block**.
-- `make dashboard` launches the interactive Streamlit dashboard.
-
----
-
-## What Judges Should Test
-
-1. Run the local verification workflow:
+The first command writes the CLI Handoff Pack to `reports/handoff/`. The gate demonstrations intentionally show a blocked regression and a Ready result. For the additional local Python-first interface:
 
 ```bash
-make lint
-make format-check
-make test
+streamlit run app.py
 ```
 
-2. Generate the complete handoff bundle:
+## Live Production Experience
 
-```bash
-make demo-handoff
-```
+The primary product experience is the [production Next.js/FastAPI dashboard](https://codex-benchmark-guardian.vercel.app). Its result workspace is organized into five tabs:
 
-3. Open the generated Markdown report:
+1. **Overview**
+2. **Metrics**
+3. **Triage**
+4. **Codex Goal**
+5. **Handoff Pack**
 
-```bash
-cat reports/handoff/report.md
-```
+Users can:
 
-The report should show **4 compared metrics** and **2 regressions**:
+- load permanent example scenarios
+- upload or edit baseline, current, and direction JSON
+- configure the threshold and per-metric directions
+- run the deterministic Python analysis engine through FastAPI
+- inspect readiness, metrics, severity, and triage
+- copy or download the conditional Codex Goal
+- inspect and download the complete Handoff Pack
+- replay the real PR #20 regression and verified fix
 
-- `latency_ms`
-- `throughput_rps`
+The dashboard defaults to a **10%** regression threshold. This repository's protected PR gate uses **25%** to evaluate pull requests.
 
-4. Launch the dashboard:
+Until a new submission video is recorded, the production dashboard is the primary demo. The existing [YouTube video](https://youtu.be/MLPgfpz6Vb0) is an earlier prototype demonstration and does not represent the current production experience.
 
-```bash
-make dashboard
-```
-
-In the Streamlit dashboard:
-
-- Keep bundled sample data selected
-- Click **Run Analysis**
-- Confirm the dashboard shows 4 compared metrics and 2 regressions
-- Confirm the Benchmark Release Readiness section shows **Block**, **50/100**, and its recommendation
-- Review the Regression Triage Advisor
-- Open the Codex Fix Prompt section
-- Open the GitHub issue handoff section
-- Open the CI Guardrail workflow section
-- Download generated reports and handoff artifacts if desired
-
----
-
-## Demo
-
-Demo video: [Codex Benchmark Guardian | OpenAI Build Week Demo](https://youtu.be/MLPgfpz6Vb0)
-
-### Launch Interactive Dashboard
-
-```bash
-make dashboard
-```
-
-### Generate Complete Handoff Pack
-
-```bash
-make demo-handoff
-```
-
----
-
-## Core Systems
-
-### Benchmark Comparison Engine
-
-- Single-metric benchmark comparison
-- Baseline and current JSON file loading
-- Multi-metric comparison across matching numeric metrics
-- Configurable regression thresholds
-- Mixed-metric direction handling
-- Deterministic change-percentage calculation
-
----
-
-### Regression Intelligence
-
-- `higher_is_worse` metric support
-- `lower_is_worse` metric support
-- Per-metric directions configuration
-- Regression severity classification
-- Summary counts and per-metric status
-- CI-friendly non-zero failure mode
-
----
-
-### Regression Triage Advisor
-
-- Identifies the metric that regressed
-- Maps common metrics to likely affected areas
-- Explains why each regression matters
-- Recommends concrete investigation steps
-- Covers latency, runtime, memory, throughput, accuracy, recall, precision, and success-rate patterns
-
----
-
-### Benchmark Release Readiness Score
-
-- Starts at 100 and deducts 30 points per high, 20 per medium, and 10 per low regression
-- Classifies scores as **Ready** (90–100), **Needs Review** (70–89), or **Block** (0–69)
-- Provides a deterministic merge recommendation in reports, handoffs, and the dashboard
-
----
-
-### Developer Handoff Automation
-
-- Markdown benchmark report generation
-- Self-contained HTML report generation
-- Codex Fix Prompt generation
-- GitHub issue handoff generation
-- Suggested repository quality checks
-- Complete Codex Handoff Pack generation
-
----
-
-### Dashboard & CI Infrastructure
-
-- Interactive Streamlit dashboard
-- In-memory benchmark file uploads
-- Built-in sample benchmark data
-- Downloadable reports and handoff artifacts
-- Deterministic GitHub Actions workflow generation
-- Pull-request and push regression enforcement
-
----
-
-## System Workflow
+## Verified Repair Loop
 
 ```mermaid
 flowchart LR
-    A[Baseline JSON] --> C[Benchmark Comparison]
-    B[Current JSON] --> C
-    D[Threshold and Metric Directions] --> C
-    C --> E[Regression Detection]
-    E --> F[Severity Classification]
-    F --> G[Regression Triage Advisor]
-    G --> H[Markdown and HTML Reports]
-    G --> I[Codex Fix Prompt]
-    G --> J[GitHub Issue Handoff]
-    G --> K[CI Guardrail Workflow]
+    A[Benchmark evidence] --> B[Deterministic regression analysis]
+    B --> C[Readiness decision]
+    C --> D[Immutable Repair Contract]
+    D --> E[Conditional Codex Goal]
+    E --> F{Repair required?}
+    F -->|Yes| G[Bounded repair workflow]
+    F -->|No| H[Verification-only workflow]
+    G --> I[Protected benchmark verification]
+    H --> I
+    I --> J{Zero material regressions<br/>and Ready?}
+    J -->|No| B
+    J -->|Yes| K[Human approval]
+    K --> L[Merge]
 ```
 
----
+### Repair-required path
 
-## Example JSON scenarios
+When material regressions exist, the generated goal directs Codex to:
 
-Permanent dashboard examples live in `examples/scenarios/`. Each evidence set contains:
+1. inspect the relevant implementation and history
+2. identify evidence-backed root-cause hypotheses
+3. implement the smallest maintainable correction
+4. add or update regression tests
+5. run only approved validation commands
+6. rerun the relevant benchmark
+7. review the final diff
+8. obtain fresh protected evidence
+9. confirm zero material regressions and **Ready** status
+10. leave merge approval to a human
 
-- `baseline.json` — reference measurements
-- `current.json` — candidate measurements
-- `directions.json` — per-metric semantics: `higher_is_worse` or `lower_is_worse`
+Failure or incomplete evidence repeats the bounded analysis-and-repair loop; it does not authorize policy changes.
 
-The regression threshold is a policy selected by the user or CI workflow; the dashboard defaults to 10%, while this repository's protected PR gate uses 25%. The PR #20 regression and verified-fix files are committed copies of real workflow evidence, retained after workflow artifacts expire. Use the dashboard's **Example scenario** selector to load any set, inspect or edit it, and run it through the current Python engine.
+### Verification-only path
 
-## Example Capabilities
+When the result has zero material regressions, the system does not invent repair work. The generated goal requires the user or agent to:
 
-### Project Information
+1. make no speculative code repair or speculative test change
+2. inspect the supplied evidence
+3. confirm that the protected workflow or trusted evaluator completed
+4. confirm zero material regressions and **Ready** status
+5. review the final diff only when changes already exist
+6. preserve human approval before merge
+7. continue monitoring benchmark stability
 
-```bash
-cbg version
-cbg about
-```
+The dashboard hides the legacy speculative fix prompt from verification-only users. The API retains its `codex_fix_prompt` field solely for backward compatibility; `codex_repair_goal.md` is the canonical handoff for both paths.
 
-### Compare a Higher-Is-Worse Metric
+## Real Regression-to-Fix Proof: PR #20
 
-```bash
-cbg compare latency_ms 100 125 --threshold 10
-```
+[Pull request #20](https://github.com/OmprakashSahani/codex-benchmark-guardian/pull/20) demonstrates the complete loop with real protected evidence.
 
-### Compare a Lower-Is-Worse Metric
+| Stage | Result |
+| --- | --- |
+| Regression metric | `pr_gate_generation_latency_ms` |
+| Harmful change | **+135.21%** |
+| Protected threshold | **25%** |
+| Severity | **critical** |
+| Initial readiness | **Needs Review** |
+| Initial score | **70/100** |
+| Verified fix | **zero material regressions** |
+| Final readiness | **Ready** |
+| Final score | **100/100** |
 
-```bash
-cbg compare throughput_rps 1000 850 \
-  --threshold 10 \
-  --direction lower_is_worse
-```
+- [Regression workflow](https://github.com/OmprakashSahani/codex-benchmark-guardian/actions/runs/29634627579)
+- [Verified-fix workflow](https://github.com/OmprakashSahani/codex-benchmark-guardian/actions/runs/29635217444)
 
-### Compare Benchmark Files
+Workflow artifacts eventually expire, so the evidence used to replay both states is committed permanently under `examples/scenarios/pr-20/`. The protected verifier established benchmark readiness; Codex did not autonomously merge the pull request.
 
-```bash
-cbg compare-files examples/baseline.json examples/current.json \
-  --threshold 10 \
-  --directions-config examples/directions.json \
-  --report reports/report.md
-```
+## Repair Contract and Safety Model
 
-### Generate Markdown, HTML, and Codex Prompt Outputs
+Every analysis produces an immutable Repair Contract from the Python engine. It records the evidence, whether repair is required, allowed and forbidden actions, validation commands, and completion criteria. The Codex Goal is derived from this contract rather than from an open-ended request to improve performance.
 
-```bash
-cbg compare-files examples/baseline.json examples/current.json \
-  --threshold 10 \
-  --directions-config examples/directions.json \
-  --report reports/report.md \
-  --html-report reports/report.html \
-  --codex-prompt reports/codex_fix_prompt.md
-```
+Codex may inspect, edit, test, benchmark, and review a bounded repair. It may not:
 
-### Run a Passing CI-Style Check
+- lower or bypass thresholds
+- change metric directions to suppress failures
+- manipulate original or fresh benchmark evidence
+- substitute a selectively chosen passing run
+- weaken the protected harness
+- weaken the protected evaluator
+- relax or delete tests merely to pass
+- hard-code expected benchmark results
+- self-declare the pull request Ready
+- automatically merge the pull request
 
-```bash
-cbg compare-files examples/baseline.json examples/current_no_regression.json \
-  --threshold 10 \
-  --directions-config examples/directions.json \
-  --report reports/report.md \
-  --fail-on-regression
-```
+Protected verification declares benchmark readiness. A human still reviews and approves the merge.
 
-`--fail-on-regression` preserves report generation and exits with a non-zero status when regressions are detected, allowing benchmark regressions to block pull requests or deployments.
+## Handoff Pack
 
----
+`codex_repair_goal.md` is always the primary and default handoff. Dashboard downloads use review-friendly names.
 
-## Codex Handoff Pack
+### Dashboard artifacts
 
-The Codex Handoff Pack connects benchmark detection to investigation, remediation, team communication, and CI enforcement.
+Repair-required results expose:
 
-### Run Bundled Sample
+1. `codex_repair_goal.md`
+2. `repair_contract.md`
+3. `repair_contract.json`
+4. `benchmark-report.md`
+5. `benchmark-report.html`
+6. `codex-fix-prompt.txt`
+7. `github-issue.md`
+8. `benchmark-workflow.yml`
+9. `release-readiness.md`
 
-```bash
-cbg handoff-pack
-```
+Verification-only results expose the same set except `codex-fix-prompt.txt`, because no speculative repair prompt is appropriate.
 
-Plain `cbg handoff-pack` uses:
+### CLI artifacts
 
-- `examples/baseline.json`
-- `examples/current.json`
-- `examples/directions.json`
-
-### Run with Custom Benchmark Files
-
-```bash
-cbg handoff-pack \
-  --baseline base.json \
-  --current current.json \
-  --direction higher_is_worse \
-  --output-dir reports/handoff
-```
-
-### Run with Mixed Metric Directions
+Run:
 
 ```bash
 cbg handoff-pack \
@@ -302,44 +212,97 @@ cbg handoff-pack \
   --current examples/current.json \
   --directions-config examples/directions.json \
   --threshold 10 \
-  --direction higher_is_worse \
   --output-dir reports/handoff
 ```
 
-### Generated Artifacts
+The CLI preserves established filenames. The equivalents of the dashboard report, prompt, issue, workflow, and readiness downloads are `report.md`, `report.html`, `codex_fix_prompt.md`, `github_issue.md`, `benchmark_guardian_ci.yml`, and `release_readiness.md`. It also writes `codex_repair_goal.md`, `repair_contract.md`, `repair_contract.json`, `pr_comment.md`, and `gate_summary.json`.
 
-```text
-reports/handoff/
-├── report.md
-├── report.html
-├── codex_fix_prompt.md
-├── github_issue.md
-├── release_readiness.md
-├── pr_comment.md
-├── gate_summary.json
-└── benchmark_guardian_ci.yml
+The CLI currently retains `codex_fix_prompt.md` in a generated verification-only pack for compatibility. Consumers should use the conditional `codex_repair_goal.md` as the authoritative handoff.
+
+## Architecture
+
+The production application uses the **Next.js 15 App Router**, **TypeScript**, and **Tailwind CSS** for presentation, with **FastAPI** exposing the deterministic Python engine. Streamlit remains available as an additional local interface.
+
+```mermaid
+flowchart TB
+    U[User] --> N[Next.js 15 dashboard<br/>TypeScript and Tailwind CSS]
+    U --> S[Streamlit local interface]
+    U --> C[CLI]
+    N --> A[FastAPI API]
+    A --> P
+    S --> P
+    C --> P
+
+    subgraph P[Deterministic Python engine: only policy source of truth]
+        E[Comparison engine] --> R[Regression classification]
+        R --> D[Readiness scoring]
+        R --> T[Triage generation]
+        D --> RC[Repair Contract generation]
+        T --> RC
+        RC --> H[Reports and handoff generation]
+    end
+
+    H --> G[Protected GitHub PR gate]
+    G --> V[Protected benchmark verification]
+    V --> M[Human review and merge decision]
 ```
 
-- `report.md` — benchmark comparison with Regression Triage Advisor guidance
-- `report.html` — self-contained browser-friendly report
-- `codex_fix_prompt.md` — ready-to-use Codex investigation and fix task
-- `github_issue.md` — issue-ready regression summary and engineering handoff
-- `release_readiness.md` — deterministic release score, classification, and merge recommendation
-- `benchmark_guardian_ci.yml` — GitHub Actions benchmark guardrail
-- `pr_comment.md` — persistent pull-request gate comment
-- `gate_summary.json` — deterministic gate enforcement contract
+Benchmark rules, readiness scoring, and repair policy are not duplicated in TypeScript. The frontend renders API results from the Python source of truth.
 
-When no regressions are detected, the pack is still generated and records that no regression fix or issue is currently required.
+## Permanent Example Scenarios
 
----
+The production dashboard includes five scenarios:
+
+- **Standard regression** — the normal regression walkthrough
+- **Material regression** — the same evidence evaluated at the higher, more permissive 25% threshold rather than the standard scenario's 10% threshold; 10% flags smaller harmful changes, while 25% tolerates more variation and therefore flags fewer regressions, and the repository's protected PR gate uses 25% to account conservatively for shared-runner timing noise
+- **Clean benchmark** — the verification-only path
+- **PR #20 regression** — the real protected regression evidence
+- **PR #20 verified fix** — the real Ready evidence after repair
+
+Scenario inputs live in `examples/scenarios/` as baseline, current, and metric-direction JSON. They can be loaded, edited, and rerun through the current Python engine.
+
+## CLI and Local Interfaces
+
+### Compare benchmark files
+
+```bash
+cbg compare-files examples/baseline.json examples/current.json \
+  --threshold 10 \
+  --directions-config examples/directions.json \
+  --report reports/report.md \
+  --html-report reports/report.html \
+  --fail-on-regression
+```
+
+`--fail-on-regression` still generates reports and exits nonzero when a material regression is detected. Metric directions may be `higher_is_worse` (for latency, runtime, memory, or error rate) or `lower_is_worse` (for throughput, accuracy, recall, precision, or success rate). `--direction` sets a fallback and `--directions-config` supplies per-metric overrides.
+
+Useful discovery commands:
+
+```bash
+cbg version
+cbg about
+cbg --help
+```
+
+### Streamlit
+
+Streamlit is an additional local, Python-first interface—not the primary production dashboard:
+
+```bash
+streamlit run app.py
+# or
+make dashboard
+```
+
+It uses the same Python comparison and reporting engine as the CLI and API.
 
 ## GitHub PR Benchmark Gate
 
-The production PR gate measures real Codex Benchmark Guardian work rather than example JSON. It checks out the exact protected base SHA and PR head into separate directories, installs each revision in its own virtual environment, and runs one fixed workload on the same runner. The harness performs warm-ups and multiple `perf_counter_ns` measurements, then stores medians for comparison, report generation, PR-gate generation, and comparison throughput.
+The protected gate benchmarks the exact protected base SHA and PR head in separate environments on the same runner. Its fixed workload uses warm-ups and repeated high-resolution measurements, then compares median results. The **25%** repository threshold is intentionally separate from the dashboard's **10%** exploratory default.
 
-The workflow separately protects the harness and evaluator: the protected-base harness controls what is measured, and the protected-base evaluator controls comparison, readiness, comments, and final enforcement. Running that evaluator from `current-src` would let a PR bypass the gate. During this one-time rollout, the base lacks the required evaluator implementation, so the workflow explicitly uses `bootstrap-current`; after rollout it selects `protected-base` and fails closed if that evaluator fails. Provenance, the job summary, and the PR comment record both `harness_source` and `evaluator_source`, plus the selected mode. It uploads base/current numeric JSON and the complete Handoff Pack before enforcement.
+The protected-base harness controls what is measured. The protected-base evaluator controls comparison, readiness, PR comments, and final enforcement. Provenance records the harness and evaluator sources, while fork pull requests benchmark and upload evidence without receiving write access for comments.
 
-The CI threshold is **25%** to be conservative about shared-runner timing noise; each measured operation is also batched 50 times before normalization, while median samples and same-runner execution reduce scheduler noise. During initial rollout, `bootstrap-common` measures only comparison, report generation, and throughput because the protected base cannot fairly implement a new PR-gate feature. Future protected-base runs use `full-pr-gate`, adding PR summary/comment generation. The selected mode and repetition count are recorded in provenance and comments. Teams can customize the generated workflow's workload and threshold. Fixed `examples/pr_gate_current_ready.json` and `examples/pr_gate_current_block.json` remain local demonstration fixtures only.
+Local demonstrations:
 
 ```bash
 cbg init-pr-gate
@@ -348,416 +311,84 @@ make demo-pr-gate-ready
 make demo-init-pr-gate
 ```
 
-The marker-based comment follows the **Block → Fix → Ready** lifecycle. Same-repository PRs receive a single updated comment; fork PRs benchmark and upload evidence but skip commenting for safety. Enable **benchmark-pr-gate** as a required status check in repository rules. Downstream projects can replace or extend `benchmarks/run_project_benchmarks.py` and `benchmarks/directions.json` with their own stable workload.
-
----
-
-## Streamlit Dashboard
-
-Run locally with:
-
-```bash
-streamlit run app.py
-```
-
-Or use:
-
-```bash
-make dashboard
-```
-
-The dashboard allows users to:
-
-- Use bundled sample benchmark data
-- Upload baseline and current JSON files
-- Upload an optional per-metric directions config
-- Select a regression threshold
-- Select a fallback metric direction
-- Run the same comparison engine used by the CLI
-- View comparison totals and regression counts
-- View the release readiness label, score, and recommendation near the analysis summary
-- Inspect metric status and severity
-- Review Regression Triage Advisor guidance
-- Preview the generated Codex Fix Prompt
-- Preview the GitHub issue handoff
-- Preview the generated CI workflow
-- Download Markdown, HTML, Codex prompt, issue, CI, and release readiness artifacts
-
-For Streamlit Community Cloud, use `app.py` as the entry file and `requirements.txt` for deployment dependencies.
-
----
-
-## Metric Direction
-
-Codex Benchmark Guardian supports two regression directions:
-
-- `higher_is_worse` — increases can represent regressions; useful for latency, runtime, memory, and error rate
-- `lower_is_worse` — decreases can represent regressions; useful for throughput, accuracy, recall, precision, and success rate
-
-`--direction` provides the global fallback. `--directions-config` can override the direction for individual metrics in mixed benchmark files.
-
-Example `examples/directions.json`:
-
-```json
-{
-  "latency_ms": "higher_is_worse",
-  "memory_mb": "higher_is_worse",
-  "runtime_s": "higher_is_worse",
-  "throughput_rps": "lower_is_worse"
-}
-```
-
-The resolved direction for every metric is displayed in CLI output and generated reports.
-
----
-
-## Example Diagnostics
-
-### Single-Metric Comparison
-
-```text
-Metric: latency_ms
-Baseline: 100.0
-Current: 125.0
-Change: 25.00%
-Threshold: 10.00%
-Direction: higher_is_worse
-Regression detected | Severity: high
-```
-
----
-
-### File Comparison
-
-```text
-Compared 4 metrics
-Regressions detected: 2
-Report written to: reports/report.md
-```
-
----
-
-### Benchmark Report
-
-```markdown
-# Benchmark Comparison Report
-
-Compared metrics: 4
-Regressions detected: 2
-
-| Metric | Direction | Baseline | Current | Change | Threshold | Status | Severity |
-| --- | --- | ---: | ---: | ---: | ---: | --- | --- |
-| latency_ms | higher_is_worse | 100 | 125 | 25.00% | 10.00% | Regression | high |
-| memory_mb | higher_is_worse | 256 | 260 | 1.56% | 10.00% | OK | none |
-| runtime_s | higher_is_worse | 2.5 | 2.7 | 8.00% | 10.00% | OK | none |
-| throughput_rps | lower_is_worse | 1000 | 850 | -15.00% | 10.00% | Regression | medium |
-```
-
----
-
-## Regression Triage Examples
-
-### Latency Regression
-
-The advisor may recommend checking:
-
-- Recent request-path changes
-- Added I/O, retries, sleeps, or serialization work
-- Network calls and dependency timing
-- Database queries and cache hit rates
-- Benchmark host load and environment noise
-
-### Throughput Regression
-
-The advisor may recommend checking:
-
-- Concurrency limits and worker counts
-- Queue behavior and backpressure
-- CPU utilization and lock contention
-- Database connection-pool usage
-- External service rate limits
-- Benchmark duration and request mix
-
-This turns a raw regression signal into a focused engineering investigation.
-
----
-
-## Codex Fix Prompt Generator
-
-The Codex Fix Prompt Generator produces a deterministic Markdown task containing:
-
-- Project title
-- Comparison totals
-- Regressed metrics only
-- Metric directions
-- Baseline and current values
-- Change percentages
-- Regression severity
-- Triage guidance
-- Suggested quality checks
-
-When regressions are found, the prompt asks Codex to inspect the repository, identify likely causes, implement a minimal fix, add or update tests, and run:
-
-```bash
-make lint
-make format-check
-make test
-make demo-ci
-```
-
-When no regression is detected, the generated prompt records that no fix is needed and recommends continued benchmark stability review.
-
----
-
-## CI Guardrail Generator
-
-Generate a benchmark guardrail workflow with:
-
-```bash
-cbg init-ci
-```
-
-Default output:
-
-```text
-.github/workflows/benchmark-guardian.yml
-```
-
-The generated workflow:
-
-- Runs on `push` and `pull_request`
-- Uses Ubuntu and Python 3.12
-- Installs the project with development dependencies
-- Executes benchmark comparison with `--fail-on-regression`
-- Generates Markdown, HTML, and Codex prompt artifacts
-- Fails when configured performance regressions are detected
-
-Customized example:
-
-```bash
-cbg init-ci \
-  --baseline examples/baseline.json \
-  --current examples/current_no_regression.json \
-  --directions-config examples/directions.json \
-  --threshold 10 \
-  --python-version 3.12 \
-  --output .github/workflows/benchmark-guardian.yml
-```
-
----
+Repositories adopting the generated gate should make `benchmark-pr-gate` a required status check. They may replace the project benchmark workload, but a proposed repair must not weaken the protected harness or evaluator.
 
 ## Built with Codex and GPT-5.6
 
-I used **Codex with GPT-5.6** throughout the project to accelerate implementation, review edge cases, and improve engineering quality.
+### Codex contributions
 
-Codex helped implement and refine:
+Codex with GPT-5.6 helped with:
 
-- JSON benchmark comparison
-- Multi-metric regression detection
-- Metric direction handling
-- Per-metric configuration
-- Markdown and HTML report generation
-- Regression Triage Advisor guidance
-- Codex Fix Prompt generation
-- CI regression failure behavior
-- GitHub Actions workflow generation
-- Streamlit dashboard workflows
-- Codex Handoff Pack generation
-- GitHub issue handoff generation
-- Makefile commands
-- Unit and CLI tests
+- implementation planning and focused code changes
+- test generation and refinement
+- API and frontend integration
+- review of security and compatibility edge cases
+- pull-request review
+- finding and fixing the verification-only legacy-prompt exposure
+- validating bounded Repair Contract behavior
 
-Codex reviews also helped identify important edge cases involving:
+### Human design and approval
 
-- Passing and intentionally failing CI demos
-- Generated workflow output paths
-- Safe quoting of workflow command paths
-- Dashboard-generated CI YAML matching dashboard inputs
-- Mixed-metric direction handling
-- Relative, `./`, and absolute sample-file paths
+The human developer defined and approved:
 
-All suggestions were reviewed manually and verified with Ruff, Pytest, demo commands, and the working Streamlit dashboard.
+- the product problem and readiness policy
+- the safety boundaries and protected evidence model
+- repair-required versus verification-only behavior
+- the user experience and scope decisions
+- review acceptance and production deployment
+- final merge decisions
 
----
+Codex assisted with implementation and review; it did not independently design, approve, deploy, or merge the project.
 
-## Installation and Testing
+## Installation and Verification
 
-Codex Benchmark Guardian is a Python-based developer tool with both a CLI and an interactive Streamlit dashboard.
-
-### Supported Platforms
-
-- Linux
-- macOS
-- Windows
-- GitHub Codespaces
-
-### Requirements
-
-- Python 3.12 or newer
-- pip
-- Git
-
-### Installation
+Requirements include Python 3.12 or newer, Node.js with npm, pip, and Git.
 
 ```bash
 git clone https://github.com/OmprakashSahani/codex-benchmark-guardian.git
 cd codex-benchmark-guardian
-pip install -e ".[dev]"
+pip install -e ".[dev,dashboard]"
+npm install
 ```
 
-### Verify Installation
-
-```bash
-cbg version
-cbg about
-```
-
-### Run Quality Checks
+Run the complete repository checks:
 
 ```bash
 make lint
 make format-check
 make test
+npm run lint
+npm run typecheck
+npm run build
 ```
 
-Expected result:
-
-```text
-72 passed
-```
-
----
-
-## Engineering Focus
-
-Codex Benchmark Guardian focuses on:
-
-- Performance regression detection
-- Developer-oriented benchmark diagnostics
-- Deterministic automation
-- Actionable Codex handoffs
-- CI performance enforcement
-- Reproducible JSON-based workflows
-- Low-friction integration with existing repositories
-
----
+The current Python suite contains **162 tests**.
 
 ## Project Structure
 
 ```text
 .
-├── .github/workflows/ci.yml      # GitHub Actions quality checks
-├── examples/                     # Example benchmark inputs
-│   ├── baseline.json
-│   ├── current.json
-│   ├── current_no_regression.json
-│   └── directions.json
-├── app.py                        # Streamlit dashboard
-├── reports/                      # Generated reports and handoff artifacts
-├── src/codex_benchmark_guardian/ # Core package and CLI
-│   ├── benchmarks.py
-│   ├── ci.py
-│   ├── cli.py
-│   ├── handoff.py
-│   ├── regression.py
-│   ├── report.py
-│   └── triage.py
-├── tests/                        # Pytest suite
-├── pyproject.toml                # Package and tool configuration
-├── requirements.txt              # Streamlit deployment dependencies
-├── Makefile                      # Development and demo commands
+├── api/
+│   └── index.py                       # FastAPI adapter for the Python engine
+├── app/                               # Next.js 15 App Router application
+├── components/                        # Production dashboard components
+├── lib/                               # Frontend types, fixtures, and adapters
+├── src/codex_benchmark_guardian/      # Deterministic Python source of truth
+│   ├── regression.py                  # Comparison and classification
+│   ├── release_readiness.py           # Readiness scoring
+│   ├── repair.py                      # Repair Contract and conditional goal
+│   ├── report.py                      # Markdown and HTML generation
+│   ├── handoff.py                     # Canonical CLI Handoff Pack
+│   └── pr_gate.py                     # Protected-gate result generation
+├── benchmarks/                        # Protected benchmark harness
+├── examples/scenarios/                # Permanent dashboard and PR #20 evidence
+├── tests/
+│   ├── test_api.py                    # API contract coverage
+│   └── test_repair.py                 # Repair-policy coverage
+├── app.py                             # Additional Streamlit interface
+├── AGENTS.md                          # Repository repair boundaries
 └── README.md
 ```
-
----
-
-## Makefile Commands
-
-```bash
-make install        # Install development dependencies
-make lint           # Run Ruff lint checks
-make format-check   # Verify Ruff formatting
-make test           # Run the Pytest suite
-make dashboard      # Launch the Streamlit dashboard
-make demo           # Generate report and Codex prompt demo artifacts
-make demo-ci        # Run a passing CI-style regression check
-make demo-handoff   # Generate the complete Codex Handoff Pack
-make demo-init-ci   # Generate a local CI workflow demo artifact
-make demo-ci-fail   # Demonstrate expected CI regression failure
-make clean-reports  # Remove generated report artifacts
-```
-
-- `make demo` demonstrates regression reporting without failing the command.
-- `make demo-ci` uses non-regressing sample data with `--fail-on-regression`.
-- `make demo-handoff` writes the complete handoff bundle to `reports/handoff/`.
-- `make demo-init-ci` writes a workflow copy to `reports/benchmark_guardian_ci.yml`.
-- `make demo-ci-fail` intentionally detects regressions and confirms expected CI failure handling.
-
----
-
-## CI & Reliability
-
-Codex Benchmark Guardian includes:
-
-- Automated unit and CLI testing
-- Ruff lint validation
-- Ruff formatting validation
-- Deterministic sample benchmark inputs
-- Passing and intentionally failing CI demos
-- Benchmark regression enforcement
-- GitHub Actions quality checks
-
-Run the complete local verification workflow:
-
-```bash
-make lint
-make format-check
-make test
-```
-
-Latest verified result:
-
-```text
-72 passed
-```
-
----
-
-## Technical Highlights
-
-- 72 verified automated tests
-- Single-metric and multi-metric comparison
-- Mixed metric-direction configuration
-- Regression severity classification
-- Regression Triage Advisor
-- Markdown and self-contained HTML reports
-- Codex Fix Prompt generation
-- GitHub issue handoff generation
-- Streamlit benchmark dashboard
-- Deterministic GitHub Actions guardrail generation
-- CI failure behavior with `--fail-on-regression`
-- Complete Codex Handoff Pack workflow
-- No external service or credential requirement
-
----
-
-## Project Philosophy
-
-Codex Benchmark Guardian treats benchmark detection as the beginning of the engineering workflow, not the end.
-
-The project focuses on helping developers understand:
-
-- What changed
-- Whether the change is a regression
-- Why the regression matters
-- Where to investigate
-- How to hand the problem to Codex
-- How to communicate it through GitHub
-- How to prevent recurrence through CI
-
-The goal is to move from raw performance numbers to an actionable, reproducible, developer-friendly response.
-
----
 
 ## License
 
