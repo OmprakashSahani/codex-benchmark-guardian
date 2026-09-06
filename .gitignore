@@ -231,4 +231,4 @@ __marimo__/
 .vercel/
 _uv/
 .python-version
-.env*
+.env.local
